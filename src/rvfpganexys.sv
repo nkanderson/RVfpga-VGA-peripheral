@@ -52,7 +52,14 @@ module rvfpganexys
     output wire        o_accel_cs_n,
     output wire        o_accel_mosi,
     input wire         i_accel_miso,
-    output wire        accel_sclk
+    output wire        accel_sclk,
+    
+    //VGA Ports
+    output wire        vga_hsync,
+    output wire        vga_vsync,
+    output wire [3:0]  vga_red,
+    output wire [3:0]  vga_green,
+    output wire [3:0]  vga_blue
     );
 
    wire [15:0]         gpio_out;
@@ -196,7 +203,7 @@ module rvfpganexys
 
    veerwolf_core
      #(.bootrom_file (bootrom_file),
-       .clk_freq_hz  (32'd12_500_000))
+       .clk_freq_hz  (32'd25_000_000))
    swervolf
      (.clk  (clk_core),
       .rstn (~rst_core),
@@ -259,7 +266,15 @@ module rvfpganexys
       .o_accel_sclk   (accel_sclk),
       .o_accel_cs_n   (o_accel_cs_n),
       .o_accel_mosi   (o_accel_mosi),
-      .i_accel_miso   (i_accel_miso));
+      .i_accel_miso   (i_accel_miso),
+    
+      //VGA Ports
+      .vga_hsync      (vga_hsync),
+      .vga_vsync      (vga_vsync),
+      .vga_red        (vga_red),
+      .vga_green      (vga_green),
+      .vga_blue       (vga_blue));
+
 
    always @(posedge clk_core) begin
       o_led[15:0] <= gpio_out[15:0];

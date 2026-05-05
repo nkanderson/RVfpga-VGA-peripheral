@@ -154,9 +154,15 @@ module veerwolf_core
     output wire        o_accel_sclk,
     output wire        o_accel_cs_n,
     output wire        o_accel_mosi,
-    input wire         i_accel_miso
+    input wire         i_accel_miso,
+    
+    //VGA Ports
+    output wire        vga_hsync,
+    output wire        vga_vsync,
+    output wire [3:0]  vga_red,
+    output wire [3:0]  vga_green,
+    output wire [3:0]  vga_blue
     );
-
 
    localparam BOOTROM_SIZE = 32'h1000;
 
@@ -421,7 +427,29 @@ module veerwolf_core
   `endif
 
         .ext_padoe_o   (en_gpio));
+        
+// VGA Peripheral
+   wb_vga vga0 (
+        .wb_clk_i     (clk),
+        .wb_rst_i     (wb_rst),
+        .wb_adr_i     (wb_m2s_vga_adr[5:0]),
+        .wb_dat_i     (wb_m2s_vga_dat),
+        .wb_sel_i     (wb_m2s_vga_sel),
+        .wb_we_i      (wb_m2s_vga_we),
+        .wb_cyc_i     (wb_m2s_vga_cyc),
+        .wb_stb_i     (wb_m2s_vga_stb),
+        .wb_dat_o     (wb_s2m_vga_dat),
+        .wb_ack_o     (wb_s2m_vga_ack),
 
+        .vga_hsync    (vga_hsync),
+        .vga_vsync    (vga_vsync),
+        .vga_red      (vga_red),
+        .vga_green    (vga_green),
+        .vga_blue     (vga_blue)
+   );
+
+   assign wb_s2m_vga_err = 1'b0;
+   assign wb_s2m_vga_rty = 1'b0;
 
    // PTC
    wire        ptc_irq;
