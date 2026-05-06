@@ -35,7 +35,7 @@ module clk_gen_nexys
      #(.BANDWIDTH("OPTIMIZED"),
        .CLKFBOUT_MULT(16),
        .CLKIN1_PERIOD(10.0), //100MHz
-       .CLKOUT0_DIVIDE(128),
+       .CLKOUT0_DIVIDE(64),
        .DIVCLK_DIVIDE(1),
        .STARTUP_WAIT("FALSE"))
    PLLE2_BASE_inst
