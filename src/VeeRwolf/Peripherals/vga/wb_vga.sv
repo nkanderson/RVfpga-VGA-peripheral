@@ -33,6 +33,7 @@ module wb_vga (
     localparam logic [3:0] REG_MODE  = 4'h0;
     localparam logic [3:0] REG_COORD = 4'h1;
     localparam logic [3:0] REG_DATA  = 4'h3;
+    localparam logic [3:0] REG_CHAR  = 4'h4;
 
     logic [3:0] reg_sel;
     logic       wb_access;
@@ -60,7 +61,6 @@ module wb_vga (
     //---------------------------------------------------------
     // Font ROM signals
     //---------------------------------------------------------
-    logic [7:0]  char_code;
     logic [6:0]  font_char_index;
     logic [3:0]  font_x;
     logic [3:0]  font_y;
@@ -83,6 +83,7 @@ module wb_vga (
     logic [9:0]  target_row;
     logic [9:0]  target_col;
     logic [7:0]  data_buffer;
+    logic [7:0]  char_code_reg;
 
     //---------------------------------------------------------
     // Wishbone acknowledge and writes
@@ -94,6 +95,7 @@ module wb_vga (
             target_row  <= 10'd100;
             target_col  <= 10'd100;
             data_buffer <= 8'h0F;
+            char_code_reg   <= 8'h01; // Default to a printable character
         end else begin
             wb_ack_o <= wb_access && !wb_ack_o;
 
@@ -112,6 +114,12 @@ module wb_vga (
                         data_buffer <= wb_dat_i[7:0];
                     end
 
+                    REG_CHAR: begin
+                        // The font ROM skips the first 32 ASCII characters (which are non-printable),
+                        // so we need to adjust the character code accordingly.
+                        char_code_reg <= wb_dat_i[7:0] < 8'd32 ? 8'd0 : wb_dat_i[7:0] - 8'd32;
+                    end
+
                     default: ;
                 endcase
             end
@@ -126,6 +134,7 @@ module wb_vga (
             REG_MODE:  wb_dat_o = {31'd0, mode};
             REG_COORD: wb_dat_o = {12'd0, target_row, target_col};
             REG_DATA:  wb_dat_o = {24'd0, data_buffer};
+            REG_CHAR:  wb_dat_o = {24'd0, (char_code_reg + 8'd32)}; // Add back the offset for ASCII
             default:   wb_dat_o = 32'h00000000;
         endcase
     end
@@ -140,7 +149,6 @@ module wb_vga (
 
     always_comb begin
         // Pre-case default assignments to avoid latch inference
-        char_code = 8'h00;
         font_char_index = 7'h00;
         font_x = 4'h0;
         font_y = 4'h0;
@@ -152,12 +160,6 @@ module wb_vga (
             // Text mode: determine char code and glyph pixel
             // TODO: font_bits is valid one cycle after font_addr is driven, so we should
             // pipeline the pixel coordinates by one cycle.
-            char_code = data_buffer;
-        
-            if (char_code < 8'd32)
-                font_char_index = 7'd0;
-            else
-                font_char_index = char_code[6:0] - 7'd32;
 
             char_area =
                 video_on &&
@@ -169,7 +171,7 @@ module wb_vga (
             font_y = pixel_row[3:0] - target_row[3:0];
             font_x = pixel_col[3:0] - target_col[3:0];
 
-            font_addr = {font_char_index, font_y};
+            font_addr = {char_code_reg[6:0], font_y};
 
             glyph_pixel = char_area && font_bits[15 - font_x];
 
@@ -178,9 +180,15 @@ module wb_vga (
                 vga_green = 4'h0;
                 vga_blue  = 4'h0;
             end else if (glyph_pixel) begin
-                vga_red   = 4'hF;
-                vga_green = 4'hF;
-                vga_blue  = 4'hF;
+                // Use data_buffer[5:3] for RGB in text mode for foreground color
+                vga_red   = {4{data_buffer[5]}};
+                vga_green = {4{data_buffer[4]}};
+                vga_blue  = {4{data_buffer[3]}};
+            end else if (char_area) begin
+                // Use data_buffer[2:0] for RGB in text mode for background color
+                vga_red   = {4{data_buffer[2]}};
+                vga_green = {4{data_buffer[1]}};
+                vga_blue  = {4{data_buffer[0]}};
             end else begin
                 vga_red   = 4'h2;
                 vga_green = 4'h0;
