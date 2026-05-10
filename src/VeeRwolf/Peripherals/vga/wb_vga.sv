@@ -1,5 +1,5 @@
 //=============================================================
-//   Chris Kane-Pardy
+//   Chris Kane-Pardy & Niklas Anderson
 //   May 4th 2026
 //   Wishbone VGA peripheral for Project 2.
 //   Provides 640x480 VGA timing using dtg.sv and exposes
@@ -82,7 +82,9 @@ module wb_vga (
     logic        mode; // 1 = text mode, 0 = graphics mode
     logic [9:0]  target_row;
     logic [9:0]  target_col;
-    logic [7:0]  data_buffer;
+    // Foreground: [15:12]=R, [11:8]=G, [7:4]=B; Background: [31:28]=R, [27:24]=G, [23:20]=B
+    // Graphics mode uses only the foreground color, text mode uses both.
+    logic [31:0] data_buffer;
     logic [7:0]  char_code_reg;
 
     //---------------------------------------------------------
@@ -94,7 +96,7 @@ module wb_vga (
             mode        <= 1'b0;
             target_row  <= 10'd100;
             target_col  <= 10'd100;
-            data_buffer <= 8'h0F;
+            data_buffer <= 32'h0F0F0F0F; // Foreground white, background white
             char_code_reg   <= 8'h01; // Default to a printable character
         end else begin
             wb_ack_o <= wb_access && !wb_ack_o;
@@ -111,7 +113,7 @@ module wb_vga (
                     end
 
                     REG_DATA: begin
-                        data_buffer <= wb_dat_i[7:0];
+                        data_buffer <= wb_dat_i;
                     end
 
                     REG_CHAR: begin
@@ -133,7 +135,7 @@ module wb_vga (
         unique case (reg_sel)
             REG_MODE:  wb_dat_o = {31'd0, mode};
             REG_COORD: wb_dat_o = {12'd0, target_row, target_col};
-            REG_DATA:  wb_dat_o = {24'd0, data_buffer};
+            REG_DATA:  wb_dat_o = data_buffer;
             REG_CHAR:  wb_dat_o = {24'd0, (char_code_reg + 8'd32)}; // Add back the offset for ASCII
             default:   wb_dat_o = 32'h00000000;
         endcase
@@ -180,15 +182,15 @@ module wb_vga (
                 vga_green = 4'h0;
                 vga_blue  = 4'h0;
             end else if (glyph_pixel) begin
-                // Use data_buffer[5:3] for RGB in text mode for foreground color
-                vga_red   = {4{data_buffer[5]}};
-                vga_green = {4{data_buffer[4]}};
-                vga_blue  = {4{data_buffer[3]}};
+                // Foreground color: bits [15:12]=R, [11:8]=G, [7:4]=B
+                vga_red   = data_buffer[15:12];
+                vga_green = data_buffer[11:8];
+                vga_blue  = data_buffer[7:4];
             end else if (char_area) begin
-                // Use data_buffer[2:0] for RGB in text mode for background color
-                vga_red   = {4{data_buffer[2]}};
-                vga_green = {4{data_buffer[1]}};
-                vga_blue  = {4{data_buffer[0]}};
+                // Background color: bits [31:28]=R, [27:24]=G, [23:20]=B
+                vga_red   = data_buffer[31:28];
+                vga_green = data_buffer[27:24];
+                vga_blue  = data_buffer[23:20];
             end else begin
                 vga_red   = 4'h2;
                 vga_green = 4'h0;
@@ -208,9 +210,10 @@ module wb_vga (
                 vga_green = 4'h0;
                 vga_blue  = 4'h0;
             end else if (box_on) begin
-                vga_red   = {4{data_buffer[2]}};
-                vga_green = {4{data_buffer[1]}};
-                vga_blue  = {4{data_buffer[0]}};
+                // Foreground color: bits [15:12]=R, [11:8]=G, [7:4]=B
+                vga_red   = data_buffer[15:12];
+                vga_green = data_buffer[11:8];
+                vga_blue  = data_buffer[7:4];
             end else begin
                 vga_red   = 4'h0;
                 vga_green = 4'h0;
