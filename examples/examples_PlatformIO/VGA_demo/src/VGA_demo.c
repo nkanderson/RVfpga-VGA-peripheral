@@ -4,6 +4,7 @@
 #define D_VGA_BASE_ADDRESS 0x80001500
 
 // VGA Register offsets
+#define VGA_MODE_REG 0x00  // [0] = mode (1 = text, 0 = graphics)
 #define VGA_COORD_REG 0x04 // [19:10] = row, [9:0] = col
 #define VGA_DATA_REG 0x0C  // [7:0] = color (R[2], G[1], B[0])
 
@@ -15,6 +16,8 @@
 // Screen dimensions
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
+
+#define TEXT_DEMO 1
 
 //=============================================================
 // Helper Functions
@@ -84,15 +87,41 @@ static void vga_box_demo(void) {
   }
 }
 
+/**
+ * Text demo - draw one character at a time, 0-9
+ */
+static void vga_text_demo(void) {
+  // Set text mode
+  vga_write_reg(VGA_MODE_REG, 0x01);
+
+  for (int i = 0; i < 10; i++) {
+    // Set coordinates (row 5, col i*16)
+    unsigned int coord = ((5 & 0x3FF) << 10) | ((i * 16) & 0x3FF);
+    vga_write_reg(VGA_COORD_REG, coord);
+
+    // Write character code to data register
+    vga_write_reg(VGA_DATA_REG, '0' + i);
+
+    delay(1000000);
+  }
+}
+
 //=============================================================
 // Main Program
 //=============================================================
 
 int main(void) {
+  vga_write_reg(VGA_MODE_REG, 0x00); // Start in graphics mode
 
-  while (1) {
-    vga_box_demo();
-    delay(2000000);
+  if (TEXT_DEMO) {
+    while (1) {
+      vga_text_demo();
+    }
+  } else {
+    while (1) {
+      vga_box_demo();
+      delay(2000000);
+    }
   }
 
   return 0;
