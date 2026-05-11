@@ -19,7 +19,7 @@ The hardware portion (Part 2) includes:
 - BRAM/font ROM configuration
 - Text and graphics rendering support
 
-The software portion includes:
+The software portion (Part 3) includes:
 - A text-mode VGA application
 - A graphics-mode VGA screensaver application
 
