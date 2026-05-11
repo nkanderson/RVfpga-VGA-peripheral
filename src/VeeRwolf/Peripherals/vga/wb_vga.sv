@@ -92,12 +92,12 @@ module wb_vga (
     //---------------------------------------------------------
     always_ff @(posedge wb_clk_i) begin
         if (wb_rst_i) begin
-            wb_ack_o    <= 1'b0;
-            mode        <= 1'b0;
-            target_row  <= 10'd100;
-            target_col  <= 10'd100;
-            data_buffer <= 32'h0F0F0F0F; // Foreground white, background white
-            char_code_reg   <= 8'h01; // Default to a printable character
+            wb_ack_o       <= 1'b0;
+            mode           <= 1'b1;          // default to text mode
+            target_row     <= 10'd100;
+            target_col     <= 10'd100;
+            data_buffer    <= 32'h0000FFF0;  // black text-box background, white text
+            char_code_reg  <= 8'd21;         // ASCII '5' minus 32
         end else begin
             wb_ack_o <= wb_access && !wb_ack_o;
 
