@@ -1,6 +1,10 @@
 # ECE 540 Project 2 – VGA Peripheral Design (Nexys A7)
 ### By Chris Kane-Pardy & Niklas Anderson
 
+## LLM Acknowledgement
+
+Part 3 application code was generated with the assistance of a large language model (LLM) after initial manual planning and design. The LLM code generation was guided by the specifications and requirements provided by the authors, and the final code was reviewed and edited by the authors to ensure correctness and adherence to the intended functionality.
+
 ## Overview
 
 This project implements a custom VGA display peripheral for the VeeRwolf (VeeR-EL2 RISC-V) SoC on the Nexys A7-DDR FPGA. The design extends the baseline system from earlier labs by integrating a Wishbone-controlled VGA controller, BRAM-based font ROM rendering, and both text and graphics display modes. The final implementation supports software-controlled VGA animation and ASCII character rendering through memory-mapped hardware registers.
