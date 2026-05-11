@@ -3,11 +3,23 @@
 
 ## Overview
 
-This project implements a custom RGB LED peripheral for the VeeRwolf (VeeR-EL2 RISC-V) SoC on the Nexys A7-DDR FPGA. The design extends the baseline system from earlier labs by integrating pushbutton inputs (Part 2) and a new PWM-based RGB LED controller with Wishbone bus support (Part 3).
+This project implements a custom VGA display peripheral for the VeeRwolf (VeeR-EL2 RISC-V) SoC on the Nexys A7-DDR FPGA. The design extends the baseline system from earlier labs by integrating a Wishbone-controlled VGA controller, BRAM-based font ROM rendering, and both text and graphics display modes. The final implementation supports software-controlled VGA animation and ASCII character rendering through memory-mapped hardware registers.
 
 ## Submission Details
 
-This submission is organized to clearly separate the development stages of the project and to make it easy to locate all required deliverables. **Part 2** contains the GPIO2 pushbutton integration. **Part 3** builds on this foundation by introducing a custom RGB PWM peripheral. The included design log "**Project 2 Design Log.pdf**" provides a explanation of the system architecture, design decisions, debugging process, and how the hardware and software components interact to achieve the final functionality.
+This submission is organized to clearly separate the major hardware and software components of the project and to make all required deliverables easy to locate.
+
+The hardware portion (Part 2) includes:
+- Wishbone VGA peripheral integration
+- VGA signal routing
+- BRAM/font ROM configuration
+- Text and graphics rendering support
+
+The software portion includes:
+- A text-mode VGA application
+- A graphics-mode VGA screensaver application
+
+The included design log, **"Project 2 Design Log.pdf"**, explains the system architecture, VGA rendering pipeline, hardware/software interaction, design decisions, debugging process, and testing performed throughout development.
 
     Project 2 Submission Chris Kane-Pardy + Niklas Anderson
     ├── Part 2/
@@ -23,18 +35,35 @@ This directory contains all deliverables for Part 2 of the project.
     ├── HDL/
     └── rvfpanexys.bit
 
+The VGA peripheral supports:
+- Wishbone memory-mapped control
+- Text rendering using BRAM-based font ROM
+- Graphics rendering mode
+- Foreground/background color control
+- VGA synchronization generation
+- 640x480 VGA output
 
 #### HDL/
-  - Updated `veerwolf_core.v`
-  - Updated `wb_intercon.v` and `wb_intercon.vh`
-  - Updated `rvfpganexys.sv` and `rvfpganexys.xdc`
-  - Update 'CLOCK FILE HERE'
-  - Implemented 'wb_vga.sv'
+This directory contains the modified and newly created hardware source files required for VGA support.
+
+Included files:
+- Updated `veerwolf_core.sv`
+- Updated `wb_intercon.v`
+- Updated `wb_intercon.vh`
+- Updated `rvfpganexys.sv`
+- Updated `rvfpganexys.xdc`
+- Updated `clk_gen_nexys.v`
+- Generated `font_rom.vhd` BRAM configuration
+  
+**vga/**
+- Implemented `wb_vga.sv`
+- Included `dtg.sv`
+- Included `bigfont.coe`
 
 #### rvfpganexys.bit
 //TODO description here
 
-### Part 3 – RGB PWM Peripheral
+### Part 3 – C Apps
 
 This directory contains all deliverables for the final project implementation.
 
