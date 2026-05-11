@@ -65,22 +65,61 @@ Included files:
 - Included `bigfont.coe`
 
 #### rvfpganexys.bit
-//TODO description here
+
+This file contains the final synthesized and implemented FPGA bitstream for the complete VGA-enabled RVfpga system.
+
+The bitstream includes:
+- Modified Wishbone interconnect
+- Integrated VGA peripheral
+- BRAM-based font ROM
+- VGA synchronization logic
+- Text and graphics display support
 
 ### Part 3 – C Apps
 
-This directory contains all deliverables for the final project implementation.
+This directory contains the software applications used to demonstrate the VGA peripheral functionality.
 
     Part 3/
     ├── Source Code/
     └── Video/
 
 #### Source Code/
-- Application1.c
-- Application2.c
+**Application1.c**
+
+Text-mode VGA demonstration application.
+
+Features:
+- Displays ASCII digits using the hardware font ROM
+- Demonstrates memory-mapped Wishbone register control
+- Displays even values as `0`
+- Uses programmable foreground/background colors
+- Demonstrates software-controlled text rendering
+
+**Application2.c**
+
+Graphics-mode VGA screensaver application.
+
+Features:
+- Animated bouncing square
+- Dynamic color cycling
+- Software-controlled VGA animation
+- Real-time coordinate updates
+- Demonstrates graphics rendering mode
 
 #### Video/
-- Application1.mov
-  - Demonstration of 
-- Application2.mov
-  - Demonstration of
+
+**Application1.mov**
+
+Demonstration of:
+- VGA text-mode rendering
+- ASCII character display
+- Foreground/background color control
+- Software-driven register updates
+
+**Application2.mov**
+
+Demonstration of:
+- VGA graphics-mode rendering
+- Real-time animation
+- Dynamic color transitions
+- Bouncing screensaver behavior
