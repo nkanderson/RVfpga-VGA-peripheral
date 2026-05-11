@@ -160,9 +160,6 @@ module wb_vga (
         box_on = 1'b0;
         if (mode) begin
             // Text mode: determine char code and glyph pixel
-            // TODO: font_bits is valid one cycle after font_addr is driven, so we should
-            // pipeline the pixel coordinates by one cycle.
-
             char_area =
                 video_on &&
                 (pixel_row >= target_row) &&
