@@ -38,7 +38,7 @@ module wb_vga (
     logic [3:0] reg_sel;
     logic       wb_access;
 
-    assign reg_sel   = wb_adr_i[5:2];
+    assign reg_sel   = wb_adr_i[11:2];
     assign wb_access = wb_cyc_i && wb_stb_i;
 
     //---------------------------------------------------------
