@@ -1,1 +1,7 @@
 **/desktop.ini
+**/platformio.ini
+
+# Python
+venv/
+__pycache__/
+.pytest_cache
