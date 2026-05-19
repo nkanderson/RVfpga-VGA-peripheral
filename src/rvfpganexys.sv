@@ -59,7 +59,11 @@ module rvfpganexys
     output wire        vga_vsync,
     output wire [3:0]  vga_red,
     output wire [3:0]  vga_green,
-    output wire [3:0]  vga_blue
+    output wire [3:0]  vga_blue,
+
+    // Audio Ports
+    output wire        aud_pwm,
+    output wire        aud_sd
     );
 
    wire [15:0]         gpio_out;
@@ -273,7 +277,12 @@ module rvfpganexys
       .vga_vsync      (vga_vsync),
       .vga_red        (vga_red),
       .vga_green      (vga_green),
-      .vga_blue       (vga_blue));
+      .vga_blue       (vga_blue),
+      
+      // Audio Ports
+      .aud_pwm        (aud_pwm),
+      .aud_sd         (aud_sd)
+      );
 
 
    always @(posedge clk_core) begin
