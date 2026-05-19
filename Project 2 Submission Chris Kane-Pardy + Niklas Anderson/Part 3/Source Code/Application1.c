@@ -44,38 +44,35 @@
 //-------------------------------------------------------------
 // VGA register definitions
 //-------------------------------------------------------------
-#define VGA_BASE   0x80001500u
+#define VGA_BASE 0x80003000u
 
-#define VGA_MODE   (*(volatile uint32_t *)(VGA_BASE + 0x00))
-#define VGA_COORD  (*(volatile uint32_t *)(VGA_BASE + 0x04))
-#define VGA_DATA   (*(volatile uint32_t *)(VGA_BASE + 0x0C))
-#define VGA_CHAR   (*(volatile uint32_t *)(VGA_BASE + 0x10))
+#define VGA_MODE (*(volatile uint32_t *)(VGA_BASE + 0x00))
+#define VGA_COORD (*(volatile uint32_t *)(VGA_BASE + 0x04))
+#define VGA_DATA (*(volatile uint32_t *)(VGA_BASE + 0x0C))
+#define VGA_CHAR (*(volatile uint32_t *)(VGA_BASE + 0x10))
 
 //-------------------------------------------------------------
 // VGA mode values
 //-------------------------------------------------------------
-#define VGA_GRAPHICS_MODE  0u
-#define VGA_TEXT_MODE      1u
+#define VGA_GRAPHICS_MODE 0u
+#define VGA_TEXT_MODE 1u
 
 //-------------------------------------------------------------
 // Display position
 //-------------------------------------------------------------
-#define TEXT_ROW  100u
-#define TEXT_COL  100u
+#define TEXT_ROW 100u
+#define TEXT_COL 100u
 
 //-------------------------------------------------------------
 // Helper macros
 //-------------------------------------------------------------
-#define VGA_COORD_PACK(row, col) \
-    ((((uint32_t)(row) & 0x3FFu) << 10) | ((uint32_t)(col) & 0x3FFu))
+#define VGA_COORD_PACK(row, col)                                               \
+  ((((uint32_t)(row) & 0x3FFu) << 10) | ((uint32_t)(col) & 0x3FFu))
 
-#define VGA_COLOR(bg_r, bg_g, bg_b, fg_r, fg_g, fg_b) \
-    ((((uint32_t)(bg_r) & 0xFu) << 28) | \
-     (((uint32_t)(bg_g) & 0xFu) << 24) | \
-     (((uint32_t)(bg_b) & 0xFu) << 20) | \
-     (((uint32_t)(fg_r) & 0xFu) << 12) | \
-     (((uint32_t)(fg_g) & 0xFu) << 8)  | \
-     (((uint32_t)(fg_b) & 0xFu) << 4))
+#define VGA_COLOR(bg_r, bg_g, bg_b, fg_r, fg_g, fg_b)                          \
+  ((((uint32_t)(bg_r) & 0xFu) << 28) | (((uint32_t)(bg_g) & 0xFu) << 24) |     \
+   (((uint32_t)(bg_b) & 0xFu) << 20) | (((uint32_t)(fg_r) & 0xFu) << 12) |     \
+   (((uint32_t)(fg_g) & 0xFu) << 8) | (((uint32_t)(fg_b) & 0xFu) << 4))
 
 //-------------------------------------------------------------
 // delay
@@ -84,48 +81,46 @@
 // CPU clock and compiler optimization level, but this value is
 // intended to be approximately human-visible, near one second.
 //-------------------------------------------------------------
-static void delay(volatile uint32_t count)
-{
-    while (count--) {
-        __asm__ volatile ("nop");
-    }
+static void delay(volatile uint32_t count) {
+  while (count--) {
+    __asm__ volatile("nop");
+  }
 }
 
 //-------------------------------------------------------------
 // main
 //-------------------------------------------------------------
-int main(void)
-{
-    uint32_t number = 0;
+int main(void) {
+  uint32_t number = 0;
 
-    // Configure VGA peripheral for text mode.
-    VGA_MODE = VGA_TEXT_MODE;
+  // Configure VGA peripheral for text mode.
+  VGA_MODE = VGA_TEXT_MODE;
 
-    // Place the character near the upper-left region of the screen.
-    VGA_COORD = VGA_COORD_PACK(TEXT_ROW, TEXT_COL);
+  // Place the character near the upper-left region of the screen.
+  VGA_COORD = VGA_COORD_PACK(TEXT_ROW, TEXT_COL);
 
-    // Red background with white text.
-    VGA_DATA = VGA_COLOR(0xF, 0x0, 0x0, 0xF, 0xF, 0xF);
+  // Red background with white text.
+  VGA_DATA = VGA_COLOR(0xF, 0x0, 0x0, 0xF, 0xF, 0xF);
 
-    while (1) {
-        uint32_t display_value;
+  while (1) {
+    uint32_t display_value;
 
-        // Project requirement:
-        // even numbers are displayed as 0.
-        if ((number % 2u) == 0u) {
-            display_value = 0u;
-        } else {
-            display_value = number;
-        }
-
-        // Current hardware displays one character at a time.
-        // This application iterates through one decimal digit.
-        VGA_CHAR = (uint32_t)('0' + (display_value % 10u));
-
-        delay(2500000u);
-
-        number = (number + 1u) % 10u;
+    // Project requirement:
+    // even numbers are displayed as 0.
+    if ((number % 2u) == 0u) {
+      display_value = 0u;
+    } else {
+      display_value = number;
     }
 
-    return 0;
+    // Current hardware displays one character at a time.
+    // This application iterates through one decimal digit.
+    VGA_CHAR = (uint32_t)('0' + (display_value % 10u));
+
+    delay(2500000u);
+
+    number = (number + 1u) % 10u;
+  }
+
+  return 0;
 }

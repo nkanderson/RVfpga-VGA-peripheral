@@ -1,7 +1,7 @@
 //=============================================================
 // VGA Peripheral Base Address and Registers
 //=============================================================
-#define D_VGA_BASE_ADDRESS 0x80001500
+#define D_VGA_BASE_ADDRESS 0x80003000
 
 // VGA Register offsets
 #define VGA_MODE_REG 0x00  // [0] = mode (1 = text, 0 = graphics)
