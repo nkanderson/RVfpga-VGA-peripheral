@@ -10,7 +10,7 @@ module wb_vga (
     input  logic        wb_clk_i,
     input  logic        wb_rst_i,
 
-    input  logic [5:0]  wb_adr_i,
+    input  logic [11:0] wb_adr_i,
     input  logic [31:0] wb_dat_i,
     input  logic [3:0]  wb_sel_i,
     input  logic        wb_we_i,
@@ -30,12 +30,12 @@ module wb_vga (
     //---------------------------------------------------------
     // Register select
     //---------------------------------------------------------
-    localparam logic [3:0] REG_MODE  = 4'h0;
-    localparam logic [3:0] REG_COORD = 4'h1;
-    localparam logic [3:0] REG_DATA  = 4'h3;
-    localparam logic [3:0] REG_CHAR  = 4'h4;
+    localparam logic [9:0] REG_MODE  = 4'h0;
+    localparam logic [9:0] REG_COORD = 4'h1;
+    localparam logic [9:0] REG_DATA  = 4'h3;
+    localparam logic [9:0] REG_CHAR  = 4'h4;
 
-    logic [3:0] reg_sel;
+    logic [9:0] reg_sel;
     logic       wb_access;
 
     assign reg_sel   = wb_adr_i[11:2];

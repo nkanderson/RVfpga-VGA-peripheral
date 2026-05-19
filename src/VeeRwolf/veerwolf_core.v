@@ -432,7 +432,7 @@ module veerwolf_core
    wb_vga vga0 (
         .wb_clk_i     (clk),
         .wb_rst_i     (wb_rst),
-        .wb_adr_i     (wb_m2s_vga_adr[5:0]),
+        .wb_adr_i     (wb_m2s_vga_adr[11:0]),
         .wb_dat_i     (wb_m2s_vga_dat),
         .wb_sel_i     (wb_m2s_vga_sel),
         .wb_we_i      (wb_m2s_vga_we),
