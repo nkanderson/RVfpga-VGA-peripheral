@@ -1,5 +1,7 @@
 **/desktop.ini
 **/platformio.ini
+**/.vscode/
+**/.pio/
 
 # Python
 venv/
