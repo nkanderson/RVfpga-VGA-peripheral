@@ -161,7 +161,11 @@ module veerwolf_core
     output wire        vga_vsync,
     output wire [3:0]  vga_red,
     output wire [3:0]  vga_green,
-    output wire [3:0]  vga_blue
+    output wire [3:0]  vga_blue,
+
+    // Audio Ports
+    output wire        aud_pwm,
+    output wire        aud_sd
     );
 
    localparam BOOTROM_SIZE = 32'h1000;
@@ -432,7 +436,7 @@ module veerwolf_core
    wb_vga vga0 (
         .wb_clk_i     (clk),
         .wb_rst_i     (wb_rst),
-        .wb_adr_i     (wb_m2s_vga_adr[5:0]),
+        .wb_adr_i     (wb_m2s_vga_adr[11:0]),
         .wb_dat_i     (wb_m2s_vga_dat),
         .wb_sel_i     (wb_m2s_vga_sel),
         .wb_we_i      (wb_m2s_vga_we),
@@ -450,6 +454,26 @@ module veerwolf_core
 
    assign wb_s2m_vga_err = 1'b0;
    assign wb_s2m_vga_rty = 1'b0;
+
+   // Audio peripheral
+   wb_audio audio0 (
+        .wb_clk_i   (clk),
+        .wb_rst_i   (wb_rst),
+        .wb_adr_i   (wb_m2s_audio_adr[11:0]),
+        .wb_dat_i   (wb_m2s_audio_dat),
+        .wb_sel_i   (wb_m2s_audio_sel),
+        .wb_we_i    (wb_m2s_audio_we),
+        .wb_cyc_i   (wb_m2s_audio_cyc),
+        .wb_stb_i   (wb_m2s_audio_stb),
+        .wb_dat_o   (wb_s2m_audio_dat),
+        .wb_ack_o   (wb_s2m_audio_ack),
+
+        .aud_pwm    (aud_pwm),
+        .aud_sd     (aud_sd)
+   );
+
+   assign wb_s2m_audio_err = 1'b0;
+   assign wb_s2m_audio_rty = 1'b0;
 
    // PTC
    wire        ptc_irq;
