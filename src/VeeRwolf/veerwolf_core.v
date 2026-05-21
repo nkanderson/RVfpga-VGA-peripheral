@@ -433,6 +433,7 @@ module veerwolf_core
         .ext_padoe_o   (en_gpio));
         
 // VGA Peripheral
+/*
    wb_vga vga0 (
         .wb_clk_i     (clk),
         .wb_rst_i     (wb_rst),
@@ -454,6 +455,14 @@ module veerwolf_core
 
    assign wb_s2m_vga_err = 1'b0;
    assign wb_s2m_vga_rty = 1'b0;
+   
+   */
+
+//Temporarily Disable VGA for periphgeral bringup
+assign wb_s2m_vga_dat = 32'd0;
+assign wb_s2m_vga_ack = 1'b0;
+assign wb_s2m_vga_err = 1'b0;
+assign wb_s2m_vga_rty = 1'b0;
 
    // Audio peripheral
    wb_audio audio0 (
