@@ -46,6 +46,7 @@ module rvfpganexys
     input wire         i_uart_rx,
     output wire        o_uart_tx,
     inout wire [15:0]  i_sw,
+    input wire [4:0]   io_btn,
     output reg [15:0]  o_led,
     output reg [7:0]   AN,
     output reg         CA, CB, CC, CD, CE, CF, CG,
@@ -282,6 +283,9 @@ module rvfpganexys
       // Audio Ports
       .aud_pwm        (aud_pwm),
       .aud_sd         (aud_sd)
+    
+      // Input controller
+      .io_btn         (io_btn)
       );
 
 
