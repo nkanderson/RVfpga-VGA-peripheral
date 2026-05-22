@@ -7,6 +7,10 @@ create_clock -add -name tck_idcode -period 100.00 [get_pins tap/tap_idcode/DRCK]
 #Since the JTAG clock is slow and bits 0 and 1 are properly synced, we can be a bit careless about the rest
 set_false_path -from  [get_cells -regexp {tap/dtmcs_r_reg\[([2-9]|[1-9][0-9])\]}]
 
+# Instruct Vivado's static timing analysis to not try to meet setup / hold against wb_clk_i for these inputs.
+set_false_path -from [get_ports {io_btn[*]}] -to [get_pins -hierarchical -filter {NAME =~ *btn_sync_0_reg*/D}]
+
+
 #set_false_path -from  [get_cells ddr2/serial_tx_reg]
 
 set_property -dict { PACKAGE_PIN E3    IOSTANDARD LVCMOS33 } [get_ports { clk }];

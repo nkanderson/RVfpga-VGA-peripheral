@@ -65,8 +65,9 @@ module wb_input_controller (
     localparam ADDR_CTRL   = 4'h2;
     localparam ADDR_MODE   = 4'h3;
 
-    reg [4:0] btn_sync_0;
-    reg [4:0] btn_sync_1;
+    // async directives tell Vivado to treat these FFs as a 2DFF synchronizer
+    (* ASYNC_REG = "TRUE" *) reg [4:0] btn_sync_0;
+    (* ASYNC_REG = "TRUE" *) reg [4:0] btn_sync_1;
     reg [4:0] input_prev;
 
     reg [4:0] input_status;
