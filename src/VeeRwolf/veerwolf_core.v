@@ -165,7 +165,7 @@ module veerwolf_core
 
     // Audio Ports
     output wire        aud_pwm,
-    output wire        aud_sd
+    output wire        aud_sd,
     
     // Input controller
     input wire [4:0]   io_btn

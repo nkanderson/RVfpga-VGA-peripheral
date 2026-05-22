@@ -282,7 +282,7 @@ module rvfpganexys
       
       // Audio Ports
       .aud_pwm        (aud_pwm),
-      .aud_sd         (aud_sd)
+      .aud_sd         (aud_sd),
     
       // Input controller
       .io_btn         (io_btn)
