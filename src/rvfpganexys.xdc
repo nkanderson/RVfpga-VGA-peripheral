@@ -7,6 +7,10 @@ create_clock -add -name tck_idcode -period 100.00 [get_pins tap/tap_idcode/DRCK]
 #Since the JTAG clock is slow and bits 0 and 1 are properly synced, we can be a bit careless about the rest
 set_false_path -from  [get_cells -regexp {tap/dtmcs_r_reg\[([2-9]|[1-9][0-9])\]}]
 
+# Instruct Vivado's static timing analysis to not try to meet setup / hold against wb_clk_i for these inputs.
+set_false_path -from [get_ports {io_btn[*]}] -to [get_pins -hierarchical -filter {NAME =~ *btn_sync_0_reg*/D}]
+
+
 #set_false_path -from  [get_cells ddr2/serial_tx_reg]
 
 set_property -dict { PACKAGE_PIN E3    IOSTANDARD LVCMOS33 } [get_ports { clk }];
@@ -102,3 +106,10 @@ set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { i_acce
 set_property -dict { PACKAGE_PIN F14   IOSTANDARD LVCMOS33 } [get_ports { o_accel_mosi }]; #IO_L5N_T0_AD9N_15 Sch=acl_mosi
 set_property -dict { PACKAGE_PIN F15   IOSTANDARD LVCMOS33 } [get_ports { accel_sclk }]; #IO_L14P_T2_SRCC_15 Sch=acl_sclk
 set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { o_accel_cs_n }]; 
+
+## Pushbuttons for input controller
+set_property -dict { PACKAGE_PIN P17 IOSTANDARD LVCMOS33 } [get_ports { io_btn[0] }]
+set_property -dict { PACKAGE_PIN M17 IOSTANDARD LVCMOS33 } [get_ports { io_btn[1] }]
+set_property -dict { PACKAGE_PIN M18 IOSTANDARD LVCMOS33 } [get_ports { io_btn[2] }]
+set_property -dict { PACKAGE_PIN P18 IOSTANDARD LVCMOS33 } [get_ports { io_btn[3] }]
+set_property -dict { PACKAGE_PIN N17 IOSTANDARD LVCMOS33 } [get_ports { io_btn[4] }]

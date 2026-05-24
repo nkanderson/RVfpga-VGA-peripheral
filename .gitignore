@@ -1,5 +1,6 @@
 **/desktop.ini
 **/platformio.ini
+!NoteFeller-PlatformIO-Tests/**/platformio.ini
 **/.vscode/
 **/.pio/
 

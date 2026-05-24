@@ -156,7 +156,7 @@ module veerwolf_core
     output wire        o_accel_mosi,
     input wire         i_accel_miso,
     
-    //VGA Ports
+    // VGA Ports
     output wire        vga_hsync,
     output wire        vga_vsync,
     output wire [3:0]  vga_red,
@@ -165,7 +165,10 @@ module veerwolf_core
 
     // Audio Ports
     output wire        aud_pwm,
-    output wire        aud_sd
+    output wire        aud_sd,
+    
+    // Input controller
+    input wire [4:0]   io_btn
     );
 
    localparam BOOTROM_SIZE = 32'h1000;
@@ -417,8 +420,8 @@ module veerwolf_core
         .wb_ack_o     (wb_s2m_gpio_ack), 
         .wb_err_o     (wb_s2m_gpio_err),
         .wb_inta_o    (gpio_irq),
+        
         // External GPIO Interface
-
   `ifdef ViDBo
         .ext_pad_i     (i_data[31:0]),
         .ext_pad_o     (o_data[31:0]),
@@ -431,6 +434,32 @@ module veerwolf_core
   `endif
 
         .ext_padoe_o   (en_gpio));
+
+// Input Controller Peripheral
+// Uses existing gpio2 Wishbone slot.
+// Base address: 0x80001500
+wb_input_controller input_controller (
+    .wb_clk_i       (clk),
+    .wb_rst_i       (wb_rst),
+
+    .wb_adr_i       (wb_m2s_gpio2_adr),
+    .wb_dat_i       (wb_m2s_gpio2_dat),
+    .wb_sel_i       (wb_m2s_gpio2_sel),
+    .wb_we_i        (wb_m2s_gpio2_we),
+    .wb_cyc_i       (wb_m2s_gpio2_cyc),
+    .wb_stb_i       (wb_m2s_gpio2_stb),
+
+    .wb_dat_o       (wb_s2m_gpio2_dat),
+    .wb_ack_o       (wb_s2m_gpio2_ack),
+    .wb_err_o       (wb_s2m_gpio2_err),
+    .wb_rty_o       (wb_s2m_gpio2_rty),
+
+    .i_btn          (io_btn),
+
+    // USB placeholder inputs for future stretch goal.
+    .i_usb_keycode  (8'd0),
+    .i_usb_valid    (1'b0)
+);
         
 // VGA Peripheral
    wb_vga vga0 (
