@@ -90,6 +90,7 @@ module wb_vga (
         .pixel_column (pixel_col)
     );
 
+    /*
     //---------------------------------------------------------
     // Sprite ROM
     //   Vivado Block Memory Generator: Single Port ROM, 32-bit x 4096,
@@ -104,6 +105,7 @@ module wb_vga (
         .addra (sprite_rom_addr),
         .douta (sprite_rom_data)
     );
+    */
 
     //---------------------------------------------------------
     // CPU-visible registers
@@ -158,6 +160,8 @@ module wb_vga (
             endcase
         end
     end
+    
+    /*
 
     //---------------------------------------------------------
     // Scanline prefetch FSM
@@ -300,5 +304,6 @@ module wb_vga (
             vga_blue  = pixel_color[3:0];
         end
     end
+    */
 
 endmodule
