@@ -73,6 +73,11 @@ module wb_input_controller (
     reg [4:0] input_status;
     reg [4:0] input_edge;
     reg [1:0] input_mode;
+    
+    // TEMP
+    reg [7:0] last_usb_keycode;
+    reg       usb_seen;
+    //
 
     wire bus_access = wb_cyc_i & wb_stb_i;
     wire bus_write  = bus_access & wb_we_i;
@@ -109,6 +114,10 @@ module wb_input_controller (
             usb_input_state <= 5'd0;
     
         end else if (i_usb_valid) begin
+            
+            // TEMP
+            last_usb_keycode <= i_usb_keycode;
+            usb_seen <= 1'b1;
     
             // Break code prefix
             if (i_usb_keycode == 8'hF0) begin
@@ -212,7 +221,8 @@ module wb_input_controller (
             // Register reads.
             if (bus_read && ~wb_ack_o) begin
                 case (reg_addr)
-                    ADDR_STATUS: wb_dat_o <= {27'd0, input_status};
+                    // ADDR_STATUS: wb_dat_o <= {27'd0, input_status};
+                    ADDR_STATUS: wb_dat_o <= {18'd0, usb_seen, last_usb_keycode, input_status};
                     ADDR_EDGE:   wb_dat_o <= {27'd0, input_edge};
                     ADDR_CTRL:   wb_dat_o <= 32'd0;
                     ADDR_MODE:   wb_dat_o <= {30'd0, input_mode};

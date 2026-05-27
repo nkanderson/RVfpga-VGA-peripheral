@@ -35,48 +35,55 @@ module ps2_receiver (
 
     reg [2:0] ps2_clk_sync;
     reg [3:0] bit_count;
-    reg [10:0] shift_reg;
+    reg [7:0] data_byte;
 
     wire ps2_falling_edge;
 
-    // Synchronize PS/2 clock into FPGA clock domain
     always @(posedge clk) begin
         ps2_clk_sync <= {ps2_clk_sync[1:0], ps2_clk};
     end
 
-    assign ps2_falling_edge =
-        (ps2_clk_sync[2:1] == 2'b10);
+    assign ps2_falling_edge = (ps2_clk_sync[2:1] == 2'b10);
 
     always @(posedge clk) begin
         if (rst) begin
             bit_count  <= 4'd0;
-            shift_reg  <= 11'd0;
-
+            data_byte  <= 8'd0;
             scan_code  <= 8'd0;
             scan_valid <= 1'b0;
         end else begin
             scan_valid <= 1'b0;
 
             if (ps2_falling_edge) begin
+                case (bit_count)
+                    4'd0: begin
+                        // Start bit, should be 0
+                        bit_count <= 4'd1;
+                    end
 
-                // Shift incoming PS/2 bit
-                shift_reg <= {ps2_data, shift_reg[10:1]};
+                    4'd1, 4'd2, 4'd3, 4'd4,
+                    4'd5, 4'd6, 4'd7, 4'd8: begin
+                        // Data bits arrive LSB first
+                        data_byte[bit_count - 1] <= ps2_data;
+                        bit_count <= bit_count + 1'b1;
+                    end
 
-                // Count received bits
-                if (bit_count == 4'd10) begin
+                    4'd9: begin
+                        // Parity bit, ignore for now
+                        bit_count <= 4'd10;
+                    end
 
-                    // Full PS/2 frame received
-                    bit_count <= 4'd0;
+                    4'd10: begin
+                        // Stop bit, should be 1
+                        scan_code  <= data_byte;
+                        scan_valid <= 1'b1;
+                        bit_count  <= 4'd0;
+                    end
 
-                    // Extract data bits [8:1]
-                    scan_code <= shift_reg[8:1];
-
-                    // Pulse valid flag
-                    scan_valid <= 1'b1;
-
-                end else begin
-                    bit_count <= bit_count + 1'b1;
-                end
+                    default: begin
+                        bit_count <= 4'd0;
+                    end
+                endcase
             end
         end
     end
