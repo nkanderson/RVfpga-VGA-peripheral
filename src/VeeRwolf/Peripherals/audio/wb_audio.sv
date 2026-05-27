@@ -4,6 +4,11 @@
 //   Wishbone audio peripheral for ECE 540 final project.
 //   Provides a simple PWM audio output and an SD pin for muting.
 //   Exposes memory-mapped registers for note index and volume.
+// 
+//   LLM Acknowledgment: This code was generated with the assistance of a
+//   language model, which provided the initial structure and logic. The
+//   final implementation was reviewed and edited by the author to ensure
+//   correctness and functionality on the target hardware platform.
 //=============================================================
 
 module wb_audio (
@@ -46,6 +51,7 @@ module wb_audio (
     //---------------------------------------------------------
     localparam logic [9:0] REG_CTRL   = 10'h0;
     localparam logic [9:0] REG_VOICES = 10'h1;
+    localparam logic [9:0] REG_VOL    = 10'h2;
 
     logic [9:0]  reg_sel;
     logic        wb_access;
@@ -65,23 +71,29 @@ module wb_audio (
     //---------------------------------------------------------
     logic [23:0] phase_accumulator [0:NUM_NOTES-1];
     logic        square [0:NUM_NOTES-1];
-    logic signed [7:0] amplitude;
+    logic [3:0]  voices_vol [0:NUM_NOTES-1]; // per-voice 4-bit volume
+    logic signed [7:0] amplitude [0:NUM_NOTES-1];
     logic signed [7:0] sample [0:NUM_NOTES-1];
     logic signed [10:0] sample_sum;
     logic [7:0]  dsm_in;
     logic [8:0]  dsm_acc;
 
-    assign amplitude = $signed({1'b0, ctrl_volume, 3'b000});  // 0..120, treated as signed
-
     assign aud_sd = ctrl_enable;
     assign aud_pwm = dsm_acc[8];
+
+    genvar gv;
+    generate
+        for (gv = 0; gv < NUM_NOTES; gv++) begin : g_amp
+            assign amplitude[gv] = $signed({1'b0, voices_vol[gv], 3'b000});
+        end
+    endgenerate
 
     // Per-voice combinational sample contribution
     always_comb begin
         sample_sum = 11'sd0;
         for (int v = 0; v < NUM_NOTES; v++) begin
             square[v] = phase_accumulator[v][23];
-            sample[v] = voices_on[v] ? (square[v] ? amplitude : -amplitude) : 8'sd0;
+            sample[v] = voices_on[v] ? (square[v] ? amplitude[v] : -amplitude[v]) : 8'sd0;
             sample_sum = sample_sum + {{3{sample[v][7]}}, sample[v]};  // sign-extend & accumulate
         end
         dsm_in = $unsigned( (sample_sum >>> 3) + 11'sd128 );  // shift, then bias
@@ -111,6 +123,10 @@ module wb_audio (
             ctrl_enable    <= 1'b0;
             ctrl_volume    <= 4'd0;
             voices_on      <= 8'b0;
+            for (int v = 0; v < NUM_NOTES; v++) begin
+                // default: max volume on every voice
+                voices_vol[v] <= 4'hF;
+            end
         end else begin
             wb_ack_o <= wb_access && !wb_ack_o;
 
@@ -123,6 +139,11 @@ module wb_audio (
 
                     REG_VOICES: begin
                         voices_on <= wb_dat_i[7:0];
+                    end
+                    REG_VOL: begin
+                        for (int v = 0; v < NUM_NOTES; v++) begin
+                            voices_vol[v] <= wb_dat_i[v*4 +: 4];
+                        end
                     end
                     default: ;
                 endcase
@@ -137,6 +158,8 @@ module wb_audio (
         unique case (reg_sel)
             REG_CTRL:   wb_dat_o = {24'd0, ctrl_volume, 3'd0, ctrl_enable};
             REG_VOICES: wb_dat_o = {24'd0, voices_on};
+            REG_VOL: wb_dat_o = {voices_vol[7], voices_vol[6], voices_vol[5], voices_vol[4],
+                     voices_vol[3], voices_vol[2], voices_vol[1], voices_vol[0]};
             default:    wb_dat_o = 32'h00000000;
         endcase
     end
