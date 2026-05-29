@@ -57,9 +57,9 @@ module veerwolf_core
    output logic [4:0]                dec_nonblock_load_waddr,
    output logic                      dec_nonblock_load_wen,
    output logic [31:0]               lsu_nonblock_load_data,
-   output   logic [31:0] exu_div_result,
-   output   logic        exu_div_wren,
-   output   logic [4:0]  div_waddr_wb,
+   output logic [31:0] exu_div_result,
+   output logic        exu_div_wren,
+   output logic [4:0]  div_waddr_wb,
    output logic                       i0_rs1_bypass_en_d,
    output logic                       i0_rs2_bypass_en_d,
    output logic                       dec_i0_rs1_en_d,
@@ -168,7 +168,11 @@ module veerwolf_core
     output wire        aud_sd,
     
     // Input controller
-    input wire [4:0]   io_btn
+    input wire [4:0]   io_btn,
+    
+    // PS/2 keyboard input from Nexys A7 USB HID host
+    input wire ps2_clk,
+    input wire ps2_data
     );
 
    localparam BOOTROM_SIZE = 32'h1000;
@@ -362,6 +366,10 @@ module veerwolf_core
    // GPIO - Leds and Switches
    wire [31:0] en_gpio;
    wire        gpio_irq;
+   
+   // USB
+   wire [7:0] ps2_scan_code;
+   wire       ps2_scan_valid;
 
 
 `ifdef ViDBo
@@ -434,6 +442,17 @@ module veerwolf_core
   `endif
 
         .ext_padoe_o   (en_gpio));
+        
+ps2_receiver ps2_rx (
+    .clk        (clk),
+    .rst        (wb_rst),
+
+    .ps2_clk    (ps2_clk),
+    .ps2_data   (ps2_data),
+
+    .scan_code  (ps2_scan_code),
+    .scan_valid (ps2_scan_valid)
+);
 
 // Input Controller Peripheral
 // Uses existing gpio2 Wishbone slot.
@@ -457,8 +476,8 @@ wb_input_controller input_controller (
     .i_btn          (io_btn),
 
     // USB placeholder inputs for future stretch goal.
-    .i_usb_keycode  (8'd0),
-    .i_usb_valid    (1'b0)
+    .i_usb_keycode  (ps2_scan_code),
+    .i_usb_valid    (ps2_scan_valid)
 );
         
 // VGA Peripheral

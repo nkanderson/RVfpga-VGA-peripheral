@@ -34,6 +34,7 @@ int main(void)
          * LED 14       = should stay off unless something unexpected happens
          */
 
+
         GPIO_OUTPUT = (status & 0x1F) | ((edges & 0x1F) << 8);
 
         if (edges) {
