@@ -4,6 +4,11 @@
 //   Wishbone audio peripheral for ECE 540 final project.
 //   Provides a simple PWM audio output and an SD pin for muting.
 //   Exposes memory-mapped registers for note index and volume.
+// 
+//   LLM Acknowledgment: This code was generated with the assistance of a
+//   language model, which provided the initial structure and logic. The
+//   final implementation was reviewed and edited by the author to ensure
+//   correctness and functionality on the target hardware platform.
 //=============================================================
 
 module wb_audio (
@@ -29,7 +34,8 @@ module wb_audio (
     // Uses the formula note = (note_freq * 2^24) / f_clk, where f_clk is 25 MHz.
     // For example, A4 = 440 Hz -> (440 * 2^24) / 25,000,000 = 0x000127.
     //---------------------------------------------------------
-    localparam logic [23:0] NOTE_LUT [0:7] = '{
+    localparam NUM_NOTES = 8;
+    localparam logic [23:0] NOTE_LUT [0:NUM_NOTES-1] = '{
         24'h0000B0,  // 0: C4
         24'h0000C5,  // 1: D4
         24'h0000DD,  // 2: E4
@@ -43,8 +49,9 @@ module wb_audio (
     //---------------------------------------------------------
     // Register select
     //---------------------------------------------------------
-    localparam logic [9:0] REG_CTRL = 10'h0;
-    localparam logic [9:0] REG_NOTE = 10'h1;
+    localparam logic [9:0] REG_CTRL   = 10'h0;
+    localparam logic [9:0] REG_VOICES = 10'h1;
+    localparam logic [9:0] REG_VOL    = 10'h2;
 
     logic [9:0]  reg_sel;
     logic        wb_access;
@@ -57,36 +64,53 @@ module wb_audio (
     //---------------------------------------------------------
     logic        ctrl_enable;
     logic [3:0]  ctrl_volume;
-    logic [3:0]  note_idx;
-    logic        note_on;
+    logic [7:0]  voices_on; 
 
     //---------------------------------------------------------
     // Audio generation logic
     //---------------------------------------------------------
-    logic [23:0] phase_accumulator;
-    logic [23:0] phase_increment;
-    logic        square;
-    logic [6:0]  amplitude;
-    logic [7:0]  sample;
+    logic [23:0] phase_accumulator [0:NUM_NOTES-1];
+    logic        square [0:NUM_NOTES-1];
+    logic [3:0]  voices_vol [0:NUM_NOTES-1]; // per-voice 4-bit volume
+    logic signed [7:0] amplitude [0:NUM_NOTES-1];
+    logic signed [7:0] sample [0:NUM_NOTES-1];
+    logic signed [10:0] sample_sum;
+    logic [7:0]  dsm_in;
     logic [8:0]  dsm_acc;
-
-    assign amplitude = {ctrl_volume[3:0], 3'b000};
-    assign phase_increment = NOTE_LUT[note_idx[2:0]];
-    assign square = phase_accumulator[23];
-    assign sample = note_on ?
-                    (square ? (8'd128 + amplitude) : (8'd128 - amplitude))
-                    : 8'd128;
 
     assign aud_sd = ctrl_enable;
     assign aud_pwm = dsm_acc[8];
 
+    genvar gv;
+    generate
+        for (gv = 0; gv < NUM_NOTES; gv++) begin : g_amp
+            assign amplitude[gv] = $signed({1'b0, voices_vol[gv], 3'b000});
+        end
+    endgenerate
+
+    // Per-voice combinational sample contribution
+    always_comb begin
+        sample_sum = 11'sd0;
+        for (int v = 0; v < NUM_NOTES; v++) begin
+            square[v] = phase_accumulator[v][23];
+            sample[v] = voices_on[v] ? (square[v] ? amplitude[v] : -amplitude[v]) : 8'sd0;
+            sample_sum = sample_sum + {{3{sample[v][7]}}, sample[v]};  // sign-extend & accumulate
+        end
+        dsm_in = $unsigned( (sample_sum >>> 3) + 11'sd128 );  // shift, then bias
+    end
+
+    // 8 phase accumulators + DSM
     always_ff @(posedge wb_clk_i) begin
         if (wb_rst_i) begin
-            phase_accumulator <= 24'd0;
+            for (int v = 0; v < NUM_NOTES; v++) begin
+                phase_accumulator[v] <= 24'd0;
+            end
             dsm_acc <= 9'd0;
         end else if (ctrl_enable) begin
-            phase_accumulator <= phase_accumulator + phase_increment;
-            dsm_acc <= dsm_acc[7:0] + sample;
+            for (int v = 0; v < NUM_NOTES; v++) begin
+                phase_accumulator[v] <= phase_accumulator[v] + NOTE_LUT[v];
+            end
+            dsm_acc <= dsm_acc[7:0] + dsm_in;
         end
     end
 
@@ -98,8 +122,11 @@ module wb_audio (
             wb_ack_o       <= 1'b0;
             ctrl_enable    <= 1'b0;
             ctrl_volume    <= 4'd0;
-            note_idx       <= 4'd0;
-            note_on        <= 1'b0;
+            voices_on      <= 8'b0;
+            for (int v = 0; v < NUM_NOTES; v++) begin
+                // default: max volume on every voice
+                voices_vol[v] <= 4'hF;
+            end
         end else begin
             wb_ack_o <= wb_access && !wb_ack_o;
 
@@ -110,9 +137,13 @@ module wb_audio (
                         ctrl_volume <= wb_dat_i[7:4];
                     end
 
-                    REG_NOTE: begin
-                        note_idx <= wb_dat_i[3:0];
-                        note_on  <= wb_dat_i[8];
+                    REG_VOICES: begin
+                        voices_on <= wb_dat_i[7:0];
+                    end
+                    REG_VOL: begin
+                        for (int v = 0; v < NUM_NOTES; v++) begin
+                            voices_vol[v] <= wb_dat_i[v*4 +: 4];
+                        end
                     end
                     default: ;
                 endcase
@@ -125,9 +156,11 @@ module wb_audio (
     //---------------------------------------------------------
     always_comb begin
         unique case (reg_sel)
-            REG_CTRL: wb_dat_o = {24'd0, ctrl_volume, 3'd0, ctrl_enable};
-            REG_NOTE: wb_dat_o = {23'd0, note_on, 4'd0, note_idx};
-            default:  wb_dat_o = 32'h00000000;
+            REG_CTRL:   wb_dat_o = {24'd0, ctrl_volume, 3'd0, ctrl_enable};
+            REG_VOICES: wb_dat_o = {24'd0, voices_on};
+            REG_VOL: wb_dat_o = {voices_vol[7], voices_vol[6], voices_vol[5], voices_vol[4],
+                     voices_vol[3], voices_vol[2], voices_vol[1], voices_vol[0]};
+            default:    wb_dat_o = 32'h00000000;
         endcase
     end
 
