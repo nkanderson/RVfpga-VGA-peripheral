@@ -60,18 +60,18 @@ void vga_init(void)
 //   sprite_id   : index into the sprite ROM (use SPR_* constants from header).
 //   sprite_type : VGA_SPRITE_32x32 or VGA_SPRITE_16x16.
 //   color       : 12-bit packed color from VGA_COLOR(r, g, b).
-//   x           : left-edge pixel column [0, 639].
-//   y           : top-edge pixel row    [0, 479].
+//   pos_x       : left-edge pixel column [0, 639].
+//   pos_y       : top-edge pixel row    [0, 479].
 // -----------------------------------------------------------------------------
 
 void vga_set_sprite(int reg, uint8_t sprite_id, uint8_t sprite_type,
-                    uint16_t color, uint16_t x, uint16_t y)
+                    uint16_t color, uint16_t pos_x, uint16_t pos_y)
 {
     if (reg < 0 || reg >= VGA_N_SPRITES) {
         return;
     }
 
-    VGA_SPRITE_POS(reg) = ((uint32_t)(y & 0x3FF) << 10) | (uint32_t)(x & 0x3FF);
+    VGA_SPRITE_POS(reg) = ((uint32_t)(pos_y & 0x3FF) << 10) | (uint32_t)(pos_x & 0x3FF);
 
     VGA_SPRITE_CFG(reg) = ((uint32_t)(sprite_id & 0x7F) << 25)
                         | ((uint32_t)(color      & 0xFFF) << 4)

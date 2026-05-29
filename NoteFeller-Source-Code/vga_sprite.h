@@ -9,9 +9,9 @@
 //   This driver provides a clean game-facing API for positioning, coloring, and
 //   displaying sprites through the memory-mapped wb_vga peripheral.
 //
-//   The peripheral supports up to 32 independent hardware sprites rendered
+//   The peripheral supports up to 64 independent hardware sprites rendered
 //   in a single scan-line pass each frame. Sprite 0 has the highest display
-//   priority; sprite 31 has the lowest.
+//   priority; sprite 63 has the lowest.
 //
 //   Sprites are either 32x32 pixels (VGA_SPRITE_32x32) or 16x16 pixels
 //   (VGA_SPRITE_16x16). Colors are 12-bit (4 bits per channel). Use the
@@ -80,7 +80,7 @@
 // Number of available sprite registers
 // -----------------------------------------------------------------------------
 
-#define VGA_N_SPRITES              32
+#define VGA_N_SPRITES              64
 
 // -----------------------------------------------------------------------------
 // Guitar sprite ID constants
@@ -108,13 +108,28 @@
 #define SPR_VERT_BORDER_RIGHT      111  // 2x32 right vertical border
 
 // -----------------------------------------------------------------------------
+// Sprite descriptor struct
+//
+// Groups all parameters needed to configure one sprite register.
+// Pass to vga_set_sprite_s() as an alternative to the individual-argument form.
+// -----------------------------------------------------------------------------
+
+typedef struct {
+    uint8_t  sprite_id;   // ROM index — use SPR_* constants
+    uint8_t  sprite_type; // VGA_SPRITE_32x32 or VGA_SPRITE_16x16
+    uint16_t color;       // 12-bit color from VGA_COLOR(r, g, b)
+    uint16_t pos_x;       // Left-edge pixel column [0, 639]
+    uint16_t pos_y;       // Top-edge pixel row    [0, 479]
+} Sprite;
+
+// -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
 
 void vga_init(void);
 
 void vga_set_sprite(int reg, uint8_t sprite_id, uint8_t sprite_type,
-                    uint16_t color, uint16_t x, uint16_t y);
+                    uint16_t color, uint16_t pos_x, uint16_t pos_y);
 
 void vga_clear_sprite(int reg);
 void vga_clear_all_sprites(void);
