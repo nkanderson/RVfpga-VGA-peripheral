@@ -20,10 +20,10 @@
 //     30–33 : Separator dot row 0 (4 columns, y = DOT_Y0)
 //     34–37 : Separator dot row 1 (y = DOT_Y1)
 //     38–41 : Separator dot row 2 (y = DOT_Y2)
-//     42–46 : Top border (5 × SPR_HORIZ_BORDER_SOLID across 160px)
+//     42–46 : Top border (5 × SPRITE_FORM_BORDER_HORIZONTAL across 160px)
 //     47–51 : Bottom border (5 tiles, below hit zone)
-//     52–55 : Left border  (4 × SPR_VERT_BORDER_LEFT,  128px coverage)
-//     56–59 : Right border (4 × SPR_VERT_BORDER_RIGHT, 128px coverage)
+//     52–55 : Left border  (4 × SPRITE_FORM_BORDER_VERTICAL_LEFT,  128px coverage)
+//     56–59 : Right border (4 × SPRITE_FORM_BORDER_VERTICAL_RIGHT, 128px coverage)
 //     60–63 : Corners — TL, TR, BL, BR
 //
 // AI Contributions:
@@ -119,7 +119,7 @@ static void setup_static_sprites(void)
     Sprite s;
 
     // Hit zone — three stacked 32x8 bars per lane.
-    s.sprite_id   = SPR_HORIZ_BAR_SOLID;
+    s.sprite_id   = SPRITE_FORM_RECTANGLE_SOLID;
     s.sprite_type = VGA_SPRITE_32x32;
     for (lane = 0; lane < N_LANES; lane++) {
         s.color = lane_color[lane];
@@ -134,7 +134,7 @@ static void setup_static_sprites(void)
     }
 
     // Dotted lane separators — 4 gaps × 3 rows.
-    s.sprite_id   = SPR_VERT_SEP_SOLID;
+    s.sprite_id   = SPRITE_FORM_SEPARATOR_SOLID;
     s.sprite_type = VGA_SPRITE_32x32;
     s.color       = VGA_COLOR(8, 8, 8);
     {
@@ -150,7 +150,7 @@ static void setup_static_sprites(void)
     }
 
     // Top border — 5 tiles of 32x2 spanning the full 160px play area width.
-    s.sprite_id   = SPR_HORIZ_BORDER_SOLID;
+    s.sprite_id   = SPRITE_FORM_BORDER_HORIZONTAL;
     s.sprite_type = VGA_SPRITE_32x32;
     s.color       = VGA_WHITE;
     s.pos_y       = FRAME_TOP;
@@ -167,7 +167,7 @@ static void setup_static_sprites(void)
     }
 
     // Left border — 4 × 2x32 segments.
-    s.sprite_id = SPR_VERT_BORDER_LEFT;
+    s.sprite_id = SPRITE_FORM_BORDER_VERTICAL_LEFT;
     s.pos_x     = BORDER_LEFT_X;
     for (int seg = 0; seg < 4; seg++) {
         s.pos_y = FRAME_TOP + 2 + seg * 32;
@@ -175,7 +175,7 @@ static void setup_static_sprites(void)
     }
 
     // Right border — 4 × 2x32 segments.
-    s.sprite_id = SPR_VERT_BORDER_RIGHT;
+    s.sprite_id = SPRITE_FORM_BORDER_VERTICAL_RIGHT;
     s.pos_x     = BORDER_RIGHT_X;
     for (int seg = 0; seg < 4; seg++) {
         s.pos_y = FRAME_TOP + 2 + seg * 32;
@@ -183,19 +183,19 @@ static void setup_static_sprites(void)
     }
 
     // Corners — TL, TR, BL, BR.
-    s.sprite_id = SPR_CORNER_TL;
+    s.sprite_id = SPRITE_FORM_CORNER_TOP_LEFT;
     s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_TOP;
     vga_set_sprite(60, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
 
-    s.sprite_id = SPR_CORNER_TR;
+    s.sprite_id = SPRITE_FORM_CORNER_TOP_RIGHT;
     s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_TOP;
     vga_set_sprite(61, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
 
-    s.sprite_id = SPR_CORNER_BL;
+    s.sprite_id = SPRITE_FORM_CORNER_BOTTOM_LEFT;
     s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_BOTTOM;
     vga_set_sprite(62, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
 
-    s.sprite_id = SPR_CORNER_BR;
+    s.sprite_id = SPRITE_FORM_CORNER_BOTTOM_RIGHT;
     s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_BOTTOM;
     vga_set_sprite(63, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
 }
@@ -221,7 +221,7 @@ int main(void)
     // Co-authored by Copilot
     while (1) {
         Sprite note;
-        note.sprite_id   = SPR_HORIZ_BAR_SOLID;
+        note.sprite_id   = SPRITE_FORM_RECTANGLE_SOLID;
         note.sprite_type = VGA_SPRITE_32x32;
 
         for (wave = 0; wave < N_WAVES; wave++) {

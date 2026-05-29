@@ -57,7 +57,7 @@ void vga_init(void)
 // Configures one sprite register and makes it visible.
 //
 //   reg         : sprite slot index [0, 31]. 0 has the highest draw priority.
-//   sprite_id   : index into the sprite ROM (use SPR_* constants from header).
+//   sprite_id   : index into the sprite ROM (use SPRITE_FORM_* constants from header).
 //   sprite_type : VGA_SPRITE_32x32 or VGA_SPRITE_16x16.
 //   color       : 12-bit packed color from VGA_COLOR(r, g, b).
 //   pos_x       : left-edge pixel column [0, 639].
