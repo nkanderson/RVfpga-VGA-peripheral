@@ -3,11 +3,14 @@
 # Author: Jacob Burtenshaw
 # Date Created: 2026-05-23
 # Description: Vivado TCL script to configure the sprite_rom Block Memory
-#              Generator IP. If sprite_rom.xci already exists it is
-#              re-registered and the COE path is refreshed. If the XCI is
-#              absent the IP is created from scratch. Uses the PROJECT_ROOT
-#              and VIVADO_PROJECT environment variables so any user can run
-#              it without editing hardcoded paths.
+#              Generator IP. Handles three cases: (1) IP already registered
+#              in the project — reconfigures in place; (2) XCI exists on disk
+#              but not registered — re-adds and updates COE path; (3) neither
+#              — creates IP from scratch. Uses the PROJECT_ROOT and
+#              VIVADO_PROJECT environment variables so any user can run it
+#              without editing hardcoded paths.
+# AI Contributions: Copilot updated IP registration logic to handle pre-existing
+#                   IP objects without triggering a name-conflict error.
 #
 #              Configuration:
 #                Module name  : sprite_rom
@@ -71,15 +74,31 @@ if {[catch {current_project}]} {
     puts "Using already-open project: [current_project]"
 }
 
-# Remove any stale IP registration before proceeding
-if {[llength [get_ips -quiet sprite_rom]] > 0} {
-    puts "Removing existing sprite_rom from project fileset..."
-    catch {export_ip_user_files -of_objects [get_ips sprite_rom] -no_script -reset -force -quiet}
-    catch {remove_files [get_files $sprite_xci]}
-}
+# Determine whether the IP is already registered in the project (even if its
+# XCI was removed from the fileset — remove_files leaves the IP object alive).
+set ip_already_registered [expr {[llength [get_ips -quiet sprite_rom]] > 0}]
 
-if {![file exists $sprite_xci]} {
-    # XCI does not exist — create the IP from scratch
+if {$ip_already_registered} {
+    # IP object is live: just update the COE path and reconfigure in place.
+    puts "sprite_rom already registered in project — reconfiguring in place..."
+    set_property -dict [list \
+        CONFIG.Memory_Type                              {Single_Port_ROM} \
+        CONFIG.Write_Width_A                            {32}              \
+        CONFIG.Write_Depth_A                            {4096}            \
+        CONFIG.Enable_A                                 {Always_Enabled}  \
+        CONFIG.Register_PortA_Output_of_Memory_Primitives {false}         \
+        CONFIG.Register_PortA_Output_of_Memory_Core    {false}            \
+        CONFIG.Load_Init_File                           {true}            \
+        CONFIG.Coe_File                                 $coe_file         \
+    ] [get_ips sprite_rom]
+    puts "sprite_rom reconfigured with COE: $coe_file"
+} elseif {[file exists $sprite_xci]} {
+    # XCI file on disk but not registered — re-add it and update COE path.
+    puts "Found existing sprite_rom.xci. Re-adding and updating COE path..."
+    add_files -norecurse $sprite_xci
+    set_property CONFIG.Coe_File $coe_file [get_ips sprite_rom]
+} else {
+    # No IP object and no XCI — create from scratch.
     puts "sprite_rom.xci not found. Creating IP from scratch..."
 
     set ip_dir [file dirname $sprite_xci]
@@ -105,11 +124,6 @@ if {![file exists $sprite_xci]} {
     ] [get_ips sprite_rom]
 
     puts "sprite_rom IP created with COE: $coe_file"
-} else {
-    # XCI exists — re-add it and update the COE path in case it changed
-    puts "Found existing sprite_rom.xci. Re-adding and updating COE path..."
-    add_files -norecurse $sprite_xci
-    set_property CONFIG.Coe_File $coe_file [get_ips sprite_rom]
 }
 
 # Generate output products

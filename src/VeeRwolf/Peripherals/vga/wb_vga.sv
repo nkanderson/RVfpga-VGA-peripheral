@@ -160,8 +160,6 @@ module wb_vga (
         end
     end
     
-    /*
-
     //---------------------------------------------------------
     // Scanline prefetch FSM
     //
@@ -303,6 +301,5 @@ module wb_vga (
             vga_blue  = pixel_color[3:0];
         end
     end
-    */
 
 endmodule
