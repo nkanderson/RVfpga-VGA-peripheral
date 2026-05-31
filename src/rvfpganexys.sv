@@ -46,7 +46,6 @@ module rvfpganexys
     input wire         i_uart_rx,
     output wire        o_uart_tx,
     inout wire [15:0]  i_sw,
-    input wire [4:0]   io_btn,
     output reg [15:0]  o_led,
     output reg [7:0]   AN,
     output reg         CA, CB, CC, CD, CE, CF, CG,
@@ -55,6 +54,9 @@ module rvfpganexys
     input wire         i_accel_miso,
     output wire        accel_sclk,
     
+    //GPIO Buttons
+    input wire [4:0]   io_btn,
+    
     //VGA Ports
     output wire        vga_hsync,
     output wire        vga_vsync,
@@ -62,9 +64,13 @@ module rvfpganexys
     output wire [3:0]  vga_green,
     output wire [3:0]  vga_blue,
 
-    // Audio Ports
+    //Audio Ports
     output wire        aud_pwm,
-    output wire        aud_sd
+    output wire        aud_sd,
+    
+    //USB Port
+    input wire ps2_clk,
+    input wire ps2_data
     );
 
    wire [15:0]         gpio_out;
@@ -285,7 +291,9 @@ module rvfpganexys
       .aud_sd         (aud_sd),
     
       // Input controller
-      .io_btn         (io_btn)
+      .io_btn         (io_btn),
+      .ps2_clk        (ps2_clk),
+      .ps2_data       (ps2_data)
       );
 
 
