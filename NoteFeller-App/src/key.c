@@ -13,13 +13,6 @@
 
 Key keys[NUMBER_INPUT_LANES];
 
-#define KEY_Y             400
-#define KEY_LANE_START    120
-#define KEY_LANE_W        100
-
-#define KEY_SPRITE_OFFSET 0
-
-
 void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite)
 {
     key->button      = button_mask;
@@ -30,10 +23,13 @@ void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite
     key->hit_latched = 0;
 }
 
-void key_init_keys(void) {
+void key_init_keys(void)
+{
+    for (int i = 0; i < NUMBER_INPUT_LANES; i++) {
         Sprite sprite;
+
         sprite.reg         = KEY_SPRITE_OFFSET + i;
-        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_HOLLOW;
+        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID;
         sprite.sprite_type = VGA_SPRITE_32x32;
         sprite.color       = lane_color_palette[i];
         sprite.pos_x       = lane_locations[i];

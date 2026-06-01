@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:    Sajida Sayyad
-// Create Date: 26/05/2026
-// File Name:   globals.h
+// Engineer:     Sajida Sayyad
+// Create Date:  26/05/2026
+// File Name:    globals.h
 // Project Name: Single-Lane Rhythm Game
 // Description:
 //   Declares shared game state and constants. Ensures no duplicate definitions.

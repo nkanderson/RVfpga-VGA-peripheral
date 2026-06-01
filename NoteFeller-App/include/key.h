@@ -3,19 +3,16 @@
 
 #include <stdint.h>
 
-#include "input_controller.h"
-#include "audio.h"
+#include "globals.h"
 #include "vga_sprite.h"
-
-#define NUMBER_INPUT_LANES 4
 
 typedef struct {
     uint32_t button;
     uint8_t  audio_voice;
     Sprite   sprite;
-    uint8_t  reg;
-    uint8_t  hittable;
-    uint8_t  hit_latched;
+
+    uint8_t hittable;
+    uint8_t hit_latched;
 } Key;
 
 extern Key keys[NUMBER_INPUT_LANES];
