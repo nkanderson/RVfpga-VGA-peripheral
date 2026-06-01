@@ -1,23 +1,31 @@
-////////////////////////////////////////////////////////////////////////////////
-// Engineer:    Sajida Sayyad
-// Create Date: 29/05/2026
-// File Name:   score.h
-// Project Name: Guitar Hero FPGA
-// Description:
-//   Header file for score tracking. Defines functions to initialize, update,
-//   and retrieve the player's score.
-////////////////////////////////////////////////////////////////////////////////
-
 #ifndef SCORE_H
 #define SCORE_H
 
-// Initializes the score to 0 and updates the display.
+#include <stdint.h>
+
+#define SCORE_POINTS_PER_HIT 100
+#define SCORE_COMBO_MAX      9999
+
+typedef struct {
+    uint32_t value;
+    uint32_t combo;
+    uint32_t multiplier;
+} ScoreState;
+
 void score_init(void);
+void score_reset(void);
 
-// Adds points to the player's score and updates the display.
-void add_score(int points);
+void score_register_hit(void);
+void score_register_miss(void);
 
-// Returns the current score.
-int get_score(void);
+uint32_t score_get_value(void);
+uint32_t score_get_combo(void);
+uint32_t score_get_multiplier(void);
 
-#endif // SCORE_H
+void score_set_multiplier(uint32_t multiplier);
+
+const ScoreState* score_get_state(void);
+
+void score_update_display(void);
+
+#endif
