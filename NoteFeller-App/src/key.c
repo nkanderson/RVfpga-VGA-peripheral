@@ -10,6 +10,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "key.h"
+#include "globals.h"
 
 Key keys[NUMBER_INPUT_LANES];
 
@@ -46,14 +47,7 @@ void key_init_keys(void)
 
 void key_draw(Key* key)
 {
-    vga_set_sprite(
-        key->sprite.reg,
-        key->sprite.sprite_id,
-        key->sprite.sprite_type,
-        key->sprite.color,
-        key->sprite.pos_x,
-        key->sprite.pos_y
-    );
+    vga_set_sprite(&key->sprite);
 }
 
 void key_draw_all(void)
