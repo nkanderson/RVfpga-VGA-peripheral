@@ -23,7 +23,6 @@
 // KEY_LANE_START is the x pixel of the left edge of lane 0.
 // Each lane is KEY_LANE_W pixels wide, so lane i starts at KEY_LANE_START + i * KEY_LANE_W.
 // KEY_Y is the fixed y position of all key sprites (hit zone row).
-#define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
 #define SCREEN_W       640
 #define KEY_LANE_W     32    // One lane = one 32x32 sprite width
 #define KEY_LANE_START ((SCREEN_W - NUMBER_INPUT_LANES * KEY_LANE_W) / 2)
