@@ -8,7 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "note.h"
-#include "keys.h"       
+#include "globals.h"       
 
 // Define constants for note movement
 #define TICK_THRESHOLD 100000 // Number of ticks before moving the note down

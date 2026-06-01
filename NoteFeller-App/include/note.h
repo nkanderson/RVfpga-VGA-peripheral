@@ -28,7 +28,7 @@ typedef struct {
     Sprite   sprite;
 } Note;
 
-Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE]; // Array of notes for each lane
+static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE]; // Array of notes for each lane
 
 // Initializes the note system (sets note as inactive).
 void note_init(Note *note, uint8_t reg, uint8_t lane);
