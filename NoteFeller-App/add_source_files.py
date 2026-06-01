@@ -2,7 +2,7 @@ Import("env")
 import os
 
 shared_src = os.path.normpath(
-    os.path.join(env.subst("$PROJECT_DIR"), "..", "NoteFeller-Source-Code")
+    os.path.join(env.subst("$PROJECT_DIR"), "drivers")
 )
 
 env.Append(CPPPATH=[shared_src])
