@@ -7,7 +7,7 @@
 //   Defines the keys (buttons) for the game and their properties.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "types.h"  // Include the types header
+#include "keys.h"  // Include the types header
 
 // Define the keys for the game
 Key keys[4] = {

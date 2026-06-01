@@ -7,7 +7,8 @@
 //   Handles note spawning, movement, and hit detection.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "types.h"          // Include the types header
+#include "note.h"        // For Note structure and function declarations
+#include "key.h"         // For Key structure and key properties
 #include "input_controller.h" // For input button masks
 #include "audio.h"          // For audio control
 #include "gpio.h"           // For GPIO control
