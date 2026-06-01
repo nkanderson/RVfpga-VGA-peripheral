@@ -1,5 +1,6 @@
 #ifndef SCORE_H
 #define SCORE_H
+#include <stdint.h>
 
 #include <stdint.h>
 

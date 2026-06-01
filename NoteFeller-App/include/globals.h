@@ -19,6 +19,8 @@
 #define HIT_LED_DURATION 300000 // Duration for hit LED blink
 #define MAX_LED_POSITION 10     // Note resets after reaching this LED
 
+#define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
+
 // --- Game State (Declarations Only) ---
 extern int game_started;       // 1 if the game is running, 0 otherwise
 extern int note_position;      // Current LED position of the note (0-10)

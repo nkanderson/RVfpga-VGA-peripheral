@@ -12,7 +12,12 @@
 #define NOTES_H
 
 #include "globals.h"  // For Note structure and game constants
-
+// --- Note Structure ---
+typedef struct {
+    uint8_t active;       // 1 if the note is active, 0 otherwise
+    uint8_t y;            // Current position of the note (LED index)
+    uint8_t lane;         // Lane the note belongs to (0-3)
+} Note;
 // Initializes the note system (sets note as inactive).
 void notes_init(void);
 

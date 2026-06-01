@@ -12,19 +12,21 @@
 #define KEYS_H
 
 #include <stdint.h>
+#include "globals.h"  // For NUMBER_INPUT_LANES
+#include "vga_sprite.h"
+#include "colors.h"
 
-// --- Key Structure ---
 typedef struct {
-    uint8_t led;          // LED to blink for this key
-    uint32_t button;      // Button mask for this key
-    uint8_t audio_voice;  // Audio voice to play when key is pressed
-    uint8_t score_led;    // LED to blink for score increment
+    uint32_t button;       // Button mask for this key
+    uint8_t  audio_voice;  // Audio voice to play when key is pressed
+    Sprite   sprite;
 } Key;
 
-// Initializes the lane data (LEDs, buttons, audio tones, score LEDs).
-void keys_init(void);
+static Key keys[NUMBER_INPUT_LANES];  // Array of 4 keys (lanes)
 
-// Returns the `Key` structure for a given lane (0-3).
-Key* get_key(int lane);
+// Initializes the lane data (LEDs, buttons, audio tones, score LEDs).
+void key_init(Key* key, uint32_t button_mask, uint8_t  audio_voice, uint8_t sprite_id, uint8_t sprite_type, uint16_t color, uint16_t pos_x, uint16_t pos_y);
+
+void key_init_keys(void);  // Initializes all keys with predefined properties
 
 #endif // KEYS_H
