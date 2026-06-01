@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:     Chris Kane-Pardy
 // Create Date:  05/31/2026
-// File Name:    keys.c
+// File Name:    key.c
 // Project Name: Note Feller
 //
 // Description:
@@ -10,7 +10,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "key.h"
-#include "globals.h"
 
 Key keys[NUMBER_INPUT_LANES];
 
@@ -94,5 +93,6 @@ void key_update_sprite_form(Key* key, uint8_t new_sprite_id, uint8_t new_sprite_
 {
     key->sprite.sprite_id   = new_sprite_id;
     key->sprite.sprite_type = new_sprite_type;
+
     key_draw(key);
 }

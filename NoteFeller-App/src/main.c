@@ -5,11 +5,12 @@
 // Description:
 //   Main gameplay driver for Note Feller.
 //   Owns high-level game state, input polling, score/audio integration,
-//   and placeholder hooks for unfinished graphics/note/key systems.
+//   and coordination between notes, keys, and VGA.
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
 
+#include "globals.h"
 #include "input_controller.h"
 #include "audio.h"
 #include "score.h"
@@ -24,10 +25,15 @@ typedef enum {
     GAME_STATE_END
 } GameState;
 
-#define GAME_TICK_DELAY 50000u
-#define AUDIO_DEFAULT_VOLUME 8u
+#define GAME_LOOP_DELAY       50000u
+#define AUDIO_DEFAULT_VOLUME  8u
+
+// Temporary demo spawn timing.
+// TODO: Replace with real chart/song timing.
+#define DEMO_SPAWN_THRESHOLD  150u
 
 static GameState game_state = GAME_STATE_START;
+static uint32_t demo_spawn_counter = 0;
 
 static void delay(volatile uint32_t count)
 {
@@ -42,9 +48,113 @@ static void system_init(void)
     audio_init(AUDIO_DEFAULT_VOLUME);
     score_init();
 
-    // TODO: Initialize VGA once graphics API is finalized.
-    // vga_init();
-    // TODO: Initialize finalized note/key systems here.
+    vga_init();
+
+    key_init_keys();
+    key_draw_all();
+
+    note_init_notes();
+}
+
+static void reset_gameplay(void)
+{
+    score_reset();
+    audio_silence();
+    input_clear_all_edges();
+
+    demo_spawn_counter = 0;
+
+    key_init_keys();
+    key_draw_all();
+
+    note_init_notes();
+
+    // TODO: Reset real song/chart state here.
+}
+
+static void update_all_notes(void)
+{
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            note_movement_routine(&notes[lane][i]);
+        }
+    }
+}
+
+static void sync_key_hittable_flags(void)
+{
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        uint8_t lane_hittable = 0;
+
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            if (notes[lane][i].active && notes[lane][i].hittable) {
+                lane_hittable = 1;
+                break;
+            }
+        }
+
+        key_set_hittable(&keys[lane], lane_hittable);
+    }
+}
+
+static void process_note_hits(uint32_t presses)
+{
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            Note* note = &notes[lane][i];
+
+            if (!note->active || !note->hittable) {
+                continue;
+            }
+
+            if (key_try_hit(&keys[lane], presses)) {
+                note->active = 0;
+                note->hittable = 0;
+
+                vga_clear_sprite(note->sprite.reg);
+
+                score_register_hit();
+
+                audio_silence();
+                audio_set_voice(keys[lane].audio_voice, 1);
+
+                break;
+            }
+        }
+    }
+}
+
+static void process_note_misses(void)
+{
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            Note* note = &notes[lane][i];
+
+            if (!note->active) {
+                continue;
+            }
+
+            if (note->y > (KEY_Y + KEY_SPRITE_H)) {
+                note->active = 0;
+                note->hittable = 0;
+
+                vga_clear_sprite(note->sprite.reg);
+
+                score_register_miss();
+            }
+        }
+    }
+}
+
+static void demo_spawn_update(void)
+{
+    // TODO: Replace with real chart/song note spawning.
+    demo_spawn_counter++;
+
+    if (demo_spawn_counter >= DEMO_SPAWN_THRESHOLD) {
+        demo_spawn_counter = 0;
+        note_spawn_note();
+    }
 }
 
 static void start_screen_update(void)
@@ -55,11 +165,7 @@ static void start_screen_update(void)
     uint32_t presses = input_poll_new_presses();
 
     if (presses & INPUT_LANE_4) {
-        score_reset();
-        audio_silence();
-
-        // TODO: Reset note chart / song position here.
-
+        reset_gameplay();
         game_state = GAME_STATE_PLAYING;
     }
 }
@@ -68,49 +174,23 @@ static void playing_update(void)
 {
     uint32_t presses = input_poll_new_presses();
 
-    // TODO: Replace this placeholder with finalized gameplay engine:
-    // - spawn notes according to song/chart timing
-    // - update active note positions
-    // - compare presses against active notes
-    // - call score_register_hit() on hit
-    // - call score_register_miss() on miss
-    // - call audio_set_voice(...) for hit feedback
-    // - update VGA sprites for notes/lanes
+    demo_spawn_update();
 
-    if (presses & INPUT_LANE_0) {
-        score_register_hit();
-        audio_silence();
-        audio_set_voice(AUDIO_VOICE_C4, 1);
-    }
+    update_all_notes();
 
-    if (presses & INPUT_LANE_1) {
-        score_register_hit();
-        audio_silence();
-        audio_set_voice(AUDIO_VOICE_D4, 1);
-    }
+    sync_key_hittable_flags();
 
-    if (presses & INPUT_LANE_2) {
-        score_register_hit();
-        audio_silence();
-        audio_set_voice(AUDIO_VOICE_E4, 1);
-    }
+    process_note_hits(presses);
 
-    if (presses & INPUT_LANE_3) {
-        score_register_hit();
-        audio_silence();
-        audio_set_voice(AUDIO_VOICE_F4, 1);
-    }
+    process_note_misses();
 
+    sync_key_hittable_flags();
+
+    // Temporary way to end game.
+    // TODO: Replace with real end condition.
     if (presses & INPUT_LANE_4) {
-        score_register_hit();
-        audio_silence();
-        audio_set_voice(AUDIO_VOICE_G4, 1);
+        game_state = GAME_STATE_END;
     }
-
-    // TODO: Replace this with real end condition:
-    // if (song_finished && no_active_notes) {
-    //     game_state = GAME_STATE_END;
-    // }
 }
 
 static void end_screen_update(void)
@@ -118,15 +198,11 @@ static void end_screen_update(void)
     audio_silence();
 
     // TODO: Draw final score / restart screen with VGA.
-    // TODO: Optionally display final score on seven segment.
+    // TODO: Display final score visually.
 
     uint32_t presses = input_poll_new_presses();
 
     if (presses & INPUT_LANE_4) {
-        score_reset();
-
-        // TODO: Reset chart/song/note state here.
-
         game_state = GAME_STATE_START;
     }
 }
@@ -154,7 +230,7 @@ int main(void)
                 break;
         }
 
-        delay(GAME_TICK_DELAY);
+        delay(GAME_LOOP_DELAY);
     }
 
     return 0;
