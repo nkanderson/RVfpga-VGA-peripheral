@@ -19,7 +19,20 @@
 #define HIT_LED_DURATION 300000 // Duration for hit LED blink
 #define MAX_LED_POSITION 10     // Note resets after reaching this LED
 
+// Key lane layout: lanes are centered as a group on the 640px screen.
+// KEY_LANE_START is the x pixel of the left edge of lane 0.
+// Each lane is KEY_LANE_W pixels wide, so lane i starts at KEY_LANE_START + i * KEY_LANE_W.
+// KEY_Y is the fixed y position of all key sprites (hit zone row).
 #define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
+#define SCREEN_W       640
+#define KEY_LANE_W     32    // One lane = one 32x32 sprite width
+#define KEY_LANE_START ((SCREEN_W - NUMBER_INPUT_LANES * KEY_LANE_W) / 2)
+#define KEY_Y          400
+
+// SPRITE OFFSETS
+#define KEY_SPRITE_OFFSET  0                  // Offset for sprite register indices
+#define NOTE_SPRITE_OFFSET NUMBER_INPUT_LANES // Offset for note sprite register indices
+
 
 // --- Game State (Declarations Only) ---
 extern int game_started;       // 1 if the game is running, 0 otherwise

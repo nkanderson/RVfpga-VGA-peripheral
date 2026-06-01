@@ -6,6 +6,7 @@
 // Description:
 //   Header file for lane/chord management. Defines the `Key` structure and
 //   functions to initialize and retrieve lane data.
+// AI Contributions: Copilot added key lane layout constants.
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef KEYS_H
@@ -14,19 +15,22 @@
 #include <stdint.h>
 #include "globals.h"  // For NUMBER_INPUT_LANES
 #include "vga_sprite.h"
-#include "colors.h"
 
 typedef struct {
     uint32_t button;       // Button mask for this key
     uint8_t  audio_voice;  // Audio voice to play when key is pressed
     Sprite   sprite;
+    int      reg;         // Sprite register index for this key
 } Key;
 
-static Key keys[NUMBER_INPUT_LANES];  // Array of 4 keys (lanes)
+static Key keys[NUMBER_INPUT_LANES];
 
-// Initializes the lane data (LEDs, buttons, audio tones, score LEDs).
-void key_init(Key* key, uint32_t button_mask, uint8_t  audio_voice, uint8_t sprite_id, uint8_t sprite_type, uint16_t color, uint16_t pos_x, uint16_t pos_y);
+void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite);
 
-void key_init_keys(void);  // Initializes all keys with predefined properties
+void key_init_keys(void);
+
+void key_update_sprite_color(Key* key, uint16_t new_color);
+
+void key_update_sprite_form(Key* key, uint8_t new_sprite_id, uint8_t new_sprite_type);
 
 #endif // KEYS_H

@@ -68,6 +68,11 @@
 #define VGA_YELLOW                 VGA_COLOR(15, 15,  0)
 #define VGA_CYAN                   VGA_COLOR(0,  15, 15)
 #define VGA_MAGENTA                VGA_COLOR(15,  0, 15)
+#define VGA_GREEN                  VGA_COLOR(0,  15,  0)
+#define VGA_RED                    VGA_COLOR(15,  0,  0)
+#define VGA_YELLOW                 VGA_COLOR(15, 15,  0)
+#define VGA_BLUE                   VGA_COLOR(0,   0, 15)
+#define VGA_ORANGE                 VGA_COLOR(15,  8,  0)
 
 // -----------------------------------------------------------------------------
 // Sprite type constants
@@ -225,6 +230,7 @@
 // -----------------------------------------------------------------------------
 
 typedef struct {
+    uint8_t  reg;         // Hardware sprite slot [0, 63]
     uint8_t  sprite_id;   // ROM index — use SPRITE_FORM_* constants
     uint8_t  sprite_type; // VGA_SPRITE_32x32 or VGA_SPRITE_16x16
     uint16_t color;       // 12-bit color from VGA_COLOR(r, g, b)
