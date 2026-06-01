@@ -244,8 +244,7 @@ typedef struct {
 
 void vga_init(void);
 
-void vga_set_sprite(int reg, uint8_t sprite_id, uint8_t sprite_type,
-                    uint16_t color, uint16_t pos_x, uint16_t pos_y);
+void vga_set_sprite(const Sprite *sprite);
 
 void vga_clear_sprite(int reg);
 void vga_clear_all_sprites(void);

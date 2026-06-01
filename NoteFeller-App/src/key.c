@@ -24,25 +24,13 @@ void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite
 }
 
 void key_init_keys(void) {
-    uint16_t key_colors[NUMBER_INPUT_LANES] = {
-        VGA_GREEN,   // Lane 0
-        VGA_RED,     // Lane 1
-        VGA_BLUE,    // Lane 2
-        VGA_YELLOW   // Lane 3
-    };
-
-    uint16_t key_locations[NUMBER_INPUT_LANES];
-    for (int i = 0; i < NUMBER_INPUT_LANES; i++) {
-        key_locations[i] = KEY_LANE_START + i * KEY_LANE_W;
-    }
-
     for (int i = 0; i < NUMBER_INPUT_LANES; i++) {
         Sprite sprite;
         sprite.reg         = i + KEY_SPRITE_OFFSET;  // Assign sprite register index
-        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID;
+        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_HOLLOW;
         sprite.sprite_type = VGA_SPRITE_32x32;
-        sprite.color       = key_colors[i];
-        sprite.pos_x       = key_locations[i];
+        sprite.color       = lane_color_palette[i];
+        sprite.pos_x       = lane_locations[i];
         sprite.pos_y       = KEY_Y;
         key_init(&keys[i], INPUT_LANE_0 << i, AUDIO_VOICE_E4 + i, sprite);
     }

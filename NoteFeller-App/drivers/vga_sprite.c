@@ -56,26 +56,26 @@ void vga_init(void)
 //
 // Configures one sprite register and makes it visible.
 //
-//   reg         : sprite slot index [0, 31]. 0 has the highest draw priority.
-//   sprite_id   : index into the sprite ROM (use SPRITE_FORM_* constants from header).
-//   sprite_type : VGA_SPRITE_32x32 or VGA_SPRITE_16x16.
-//   color       : 12-bit packed color from VGA_COLOR(r, g, b).
-//   pos_x       : left-edge pixel column [0, 639].
-//   pos_y       : top-edge pixel row    [0, 479].
+//   sprite->reg         : sprite slot index [0, 63]. 0 has the highest draw priority.
+//   sprite->sprite_id   : index into the sprite ROM (use SPRITE_FORM_* constants).
+//   sprite->sprite_type : VGA_SPRITE_32x32 or VGA_SPRITE_16x16.
+//   sprite->color       : 12-bit packed color from VGA_COLOR(r, g, b).
+//   sprite->pos_x       : left-edge pixel column [0, 639].
+//   sprite->pos_y       : top-edge pixel row    [0, 479].
 // -----------------------------------------------------------------------------
 
-void vga_set_sprite(int reg, uint8_t sprite_id, uint8_t sprite_type,
-                    uint16_t color, uint16_t pos_x, uint16_t pos_y)
+void vga_set_sprite(const Sprite *sprite)
 {
+    int reg = sprite->reg;
     if (reg < 0 || reg >= VGA_N_SPRITES) {
         return;
     }
 
-    VGA_SPRITE_POS(reg) = ((uint32_t)(pos_y & 0x3FF) << 10) | (uint32_t)(pos_x & 0x3FF);
+    VGA_SPRITE_POS(reg) = ((uint32_t)(sprite->pos_y & 0x3FF) << 10) | (uint32_t)(sprite->pos_x & 0x3FF);
 
-    VGA_SPRITE_CFG(reg) = ((uint32_t)(sprite_id & 0x7F) << 25)
-                        | ((uint32_t)(color      & 0xFFF) << 4)
-                        | ((uint32_t)(sprite_type & 0x1) << 1)
+    VGA_SPRITE_CFG(reg) = ((uint32_t)(sprite->sprite_id   & 0x7F)  << 25)
+                        | ((uint32_t)(sprite->color        & 0xFFF) << 4)
+                        | ((uint32_t)(sprite->sprite_type  & 0x1)   << 1)
                         | 0x1U;
 }
 
