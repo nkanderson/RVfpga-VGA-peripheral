@@ -1,14 +1,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Engineer:    Sajida Sayyad
-// Create Date: 26/05/2026
-// File Name:   types.h
-// Project Name: Single-Lane Rhythm Game
+// Create Date: 29/05/2026
+// File Name:   keys.h
+// Project Name: Guitar Hero FPGA
 // Description:
-//   Defines custom types (Key and Note) used in the game.
+//   Header file for lane/chord management. Defines the `Key` structure and
+//   functions to initialize and retrieve lane data.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef KEYS_H
+#define KEYS_H
 
 #include <stdint.h>
 
@@ -20,11 +21,10 @@ typedef struct {
     uint8_t score_led;    // LED to blink for score increment
 } Key;
 
-// --- Note Structure ---
-typedef struct {
-    uint8_t active;       // 1 if the note is active, 0 otherwise
-    uint8_t y;            // Current position of the note (LED index)
-    uint8_t lane;         // Lane the note belongs to (0-3)
-} Note;
+// Initializes the lane data (LEDs, buttons, audio tones, score LEDs).
+void keys_init(void);
 
-#endif // TYPES_H
+// Returns the `Key` structure for a given lane (0-3).
+Key* get_key(int lane);
+
+#endif // KEYS_H

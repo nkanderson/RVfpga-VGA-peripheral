@@ -17,7 +17,6 @@
 #include "input_controller.h" // For input button masks
 #include "gpio.h"             // For GPIO control
 #include "globals.h"          // For game state and constants
-#include "types.h"            // For Key and Note structures
 
 // --- Game State (Definitions) ---
 int game_started = 0;          // 1 if the game is running, 0 otherwise
