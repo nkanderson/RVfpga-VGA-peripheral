@@ -28,12 +28,7 @@ typedef enum {
 #define GAME_LOOP_DELAY       50000u
 #define AUDIO_DEFAULT_VOLUME  8u
 
-// Temporary demo spawn timing.
-// TODO: Replace with real chart/song timing.
-#define DEMO_SPAWN_THRESHOLD  150u
-
 static GameState game_state = GAME_STATE_START;
-static uint32_t demo_spawn_counter = 0;
 
 static void delay(volatile uint32_t count)
 {
@@ -62,8 +57,6 @@ static void reset_gameplay(void)
     audio_silence();
     input_clear_all_edges();
 
-    demo_spawn_counter = 0;
-
     key_init_keys();
     key_draw_all();
 
@@ -72,88 +65,30 @@ static void reset_gameplay(void)
     // TODO: Reset real song/chart state here.
 }
 
-static void update_all_notes(void)
-{
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            note_movement_routine(&notes[lane][i]);
-        }
-    }
-}
-
 static void sync_key_hittable_flags(void)
 {
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        uint8_t lane_hittable = 0;
-
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            if (notes[lane][i].active && notes[lane][i].hittable) {
-                lane_hittable = 1;
-                break;
-            }
-        }
-
+        bool lane_hittable = note_lane_hit_check(lane);
         key_set_hittable(&keys[lane], lane_hittable);
     }
 }
 
 static void process_note_hits(uint32_t presses)
 {
+    // For each gameplay lane, check if the button was pressed this tick.
+    // key_try_hit returns true only when the lane is hittable and not latched,
+    // so a press without a hittable note in the hit box registers as a miss.
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            Note* note = &notes[lane][i];
+        if (!(presses & keys[lane].button)) { continue; }
 
-            if (!note->active || !note->hittable) {
-                continue;
-            }
-
-            if (key_try_hit(&keys[lane], presses)) {
-                note->active = 0;
-                note->hittable = 0;
-
-                vga_clear_sprite(note->sprite.reg);
-
-                score_register_hit();
-
-                audio_silence();
-                audio_set_voice(keys[lane].audio_voice, 1);
-
-                break;
-            }
+        if (key_try_hit(&keys[lane], presses)) {
+            note_process_hit(lane);
+            score_register_hit();
+            audio_silence();
+            audio_set_voice(keys[lane].audio_voice, 1);
+        } else {
+            score_register_miss();
         }
-    }
-}
-
-static void process_note_misses(void)
-{
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            Note* note = &notes[lane][i];
-
-            if (!note->active) {
-                continue;
-            }
-
-            if (note->y > (KEY_Y + KEY_SPRITE_H)) {
-                note->active = 0;
-                note->hittable = 0;
-
-                vga_clear_sprite(note->sprite.reg);
-
-                score_register_miss();
-            }
-        }
-    }
-}
-
-static void demo_spawn_update(void)
-{
-    // TODO: Replace with real chart/song note spawning.
-    demo_spawn_counter++;
-
-    if (demo_spawn_counter >= DEMO_SPAWN_THRESHOLD) {
-        demo_spawn_counter = 0;
-        note_spawn_note();
     }
 }
 
@@ -170,21 +105,19 @@ static void start_screen_update(void)
     }
 }
 
-static void playing_update(void)
-{
-    uint32_t presses = input_poll_new_presses();
+static void playing_update(void) {
+    uint32_t presses = input_poll_new_presses(); // Latch new button edges for this tick
 
-    demo_spawn_update();
-
-    update_all_notes();
-
-    sync_key_hittable_flags();
-
-    process_note_hits(presses);
-
-    process_note_misses();
-
-    sync_key_hittable_flags();
+    // Spawn a note if possible
+    note_spawn_routine();
+    // Move all active notes down; deactivate any that exit the screen
+    note_movement_routine(); 
+    // Set each key's hittable flag based on current note positions
+    sync_key_hittable_flags(); 
+    // Register hits or misses for any lane buttons pressed this tick
+    process_note_hits(presses); 
+    // Re-sync after hits so consumed notes immediately clear their key flag
+    sync_key_hittable_flags(); 
 
     // Temporary way to end game.
     // TODO: Replace with real end condition.

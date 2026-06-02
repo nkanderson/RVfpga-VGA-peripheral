@@ -28,24 +28,27 @@ typedef struct {
     Sprite   sprite;
 } Note;
 
-static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE]; // Array of notes for each lane
-
 // Initializes the note system (sets note as inactive).
 void note_init(Note *note, uint8_t reg, uint8_t lane);
 
 void note_init_notes(void);
 
 // Spawns a new note in a random lane if no note is active.
-void note_spawn_note(void);
+void note_spawn_routine(void);
 
-// Updates the position of the active note and checks for misses.
-void note_movement_routine(Note *note);
+// Updates the position of all notes across all lanes.
+void note_movement_routine(void);
+
+// Returns true if any note in the given lane is active and within the hit zone.
+bool note_lane_hit_check(int lane);
+
+// Deactivates the first hittable note in the lane and clears its sprite.
+void note_process_hit(int lane);
 
 // Returns true when the note has fallen past the bottom of the VGA display.
 bool note_complete(uint16_t y, uint8_t sprite_height);
 
 // Returns true when more than half of the note sprite overlaps the key hit box.
 bool note_hittable_check(uint16_t y, uint8_t sprite_height);
-
 
 #endif // NOTES_H
