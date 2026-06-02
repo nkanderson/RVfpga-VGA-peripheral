@@ -19,8 +19,8 @@
 
 // Spawn timing: each lane independently waits a random number of routine calls
 // (in the range [BASE, BASE+RANGE)) before it becomes eligible to emit a note.
-#define SPAWN_THRESHOLD_BASE  5u
-#define SPAWN_THRESHOLD_RANGE 5u
+#define SPAWN_THRESHOLD_BASE  200u
+#define SPAWN_THRESHOLD_RANGE 150u
 
 // Note array — private to this file; use the note_* API from outside.
 static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE];
