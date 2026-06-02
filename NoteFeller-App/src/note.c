@@ -22,6 +22,13 @@
 #define SPAWN_THRESHOLD_BASE  200u
 #define SPAWN_THRESHOLD_RANGE 150u
 
+#define HIT_WINDOW_PAD_TOP    1
+#define HIT_WINDOW_PAD_BOTTOM 1
+
+#define SPAWN_CHANCE_PERCENT  2u
+#define MIN_SPAWN_GAP_TICKS   80u
+#define MAX_ACTIVE_PER_LANE   2u
+
 // Note array — private to this file; use the note_* API from outside.
 static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE];
 
@@ -88,20 +95,23 @@ bool note_complete(uint16_t y, uint8_t sprite_height) {
 // The hit box spans [KEY_Y, KEY_Y + KEY_SPRITE_H). Because the note is
 // smaller or equal to the hit box, the note is hittable once its center
 // row enters the hit box and until its center row exits the bottom.
-bool note_hittable_check(uint16_t y, uint8_t sprite_height) {
+bool note_hittable_check(uint16_t y, uint8_t sprite_height)
+{
     uint16_t note_top    = y;
     uint16_t note_bottom = y + sprite_height;
-    uint16_t hit_top     = KEY_Y;
-    uint16_t hit_bottom  = KEY_Y + KEY_SPRITE_H;
 
-    uint16_t overlap_top    = (note_top    > hit_top)    ? note_top    : hit_top;
-    uint16_t overlap_bottom = (note_bottom < hit_bottom) ? note_bottom : hit_bottom;
+    uint16_t hit_top;
+    uint16_t hit_bottom;
 
-    if (overlap_bottom <= overlap_top) {return false;}
+    if (KEY_Y > HIT_WINDOW_PAD_TOP) {
+        hit_top = KEY_Y - HIT_WINDOW_PAD_TOP;
+    } else {
+        hit_top = 0;
+    }
 
-    uint16_t overlap = overlap_bottom - overlap_top;
+    hit_bottom = KEY_Y + KEY_SPRITE_H + HIT_WINDOW_PAD_BOTTOM;
 
-    return (overlap > (uint16_t)sprite_height / 2u);
+    return (note_bottom >= hit_top) && (note_top <= hit_bottom);
 }
 
 // Updates every note across all lanes.
@@ -144,16 +154,33 @@ bool note_lane_hit_check(int lane) {
 }
 
 // Deactivates the first hittable note in the lane and clears its sprite.
-void note_process_hit(int lane) {
+bool note_process_hit(int lane)
+{
     for (int i = 0; i < NOTES_PER_LANE; i++) {
         Note *note = &notes[lane][i];
+
         if (note->active && note->hittable) {
             note->active   = 0;
             note->hittable = 0;
             vga_clear_sprite(note->sprite.reg);
-            return;
+            return true;
         }
     }
+
+    return false;
+}
+
+static uint8_t note_count_active_in_lane(int lane)
+{
+    uint8_t count = 0;
+
+    for (int i = 0; i < NOTES_PER_LANE; i++) {
+        if (notes[lane][i].active) {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 // Co-authored by Copilot
@@ -161,29 +188,30 @@ void note_process_hit(int lane) {
 // A lane is eligible once its counter reaches its randomized threshold AND it
 // has a free note slot. One eligible lane is chosen at random and one note
 // is activated at y=0.
-void note_spawn_routine(void) {
-    // Increment counters and collect eligible lanes in one pass.
-    uint8_t eligible[NUMBER_INPUT_LANES];
-    uint8_t eligible_count = 0;
-
+void note_spawn_routine(void)
+{
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        spawn_counters[lane]++;
-
-        if (spawn_counters[lane] < spawn_thresholds[lane]) { continue; }
-
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            if (!notes[lane][i].active) {
-                eligible[eligible_count++] = (uint8_t)lane;
-                break;
-            }
+        if (spawn_counters[lane] < MIN_SPAWN_GAP_TICKS) {
+            spawn_counters[lane]++;
         }
     }
 
-    if (eligible_count == 0) { return; }
+    if ((lcg_rand() % 100u) >= SPAWN_CHANCE_PERCENT) {
+        return;
+    }
 
-    // Pick a random eligible lane and find its first free slot.
-    int chosen_lane = eligible[lcg_rand() % eligible_count];
+    int chosen_lane = lcg_rand() % NUMBER_INPUT_LANES;
+
+    if (spawn_counters[chosen_lane] < MIN_SPAWN_GAP_TICKS) {
+        return;
+    }
+
+    if (note_count_active_in_lane(chosen_lane) >= MAX_ACTIVE_PER_LANE) {
+        return;
+    }
+
     int slot = -1;
+
     for (int i = 0; i < NOTES_PER_LANE; i++) {
         if (!notes[chosen_lane][i].active) {
             slot = i;
@@ -191,19 +219,19 @@ void note_spawn_routine(void) {
         }
     }
 
-    if (slot < 0) { return; } // Defensive: should not happen
+    if (slot < 0) {
+        return;
+    }
 
-    // Activate the note at the top of the screen.
     Note *note = &notes[chosen_lane][slot];
+
     note->active       = 1;
     note->hittable     = 0;
     note->y            = 0;
     note->tick_ctr     = 0;
     note->sprite.pos_y = 0;
+
     vga_set_sprite(&note->sprite);
 
-    // Reset counter and re-randomize threshold for this lane.
-    spawn_counters[chosen_lane]   = 0;
-    spawn_thresholds[chosen_lane] = rand_threshold();
+    spawn_counters[chosen_lane] = 0;
 }
-

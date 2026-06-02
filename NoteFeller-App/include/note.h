@@ -43,7 +43,7 @@ void note_movement_routine(void);
 bool note_lane_hit_check(int lane);
 
 // Deactivates the first hittable note in the lane and clears its sprite.
-void note_process_hit(int lane);
+bool note_process_hit(int lane);
 
 // Returns true when the note has fallen past the bottom of the VGA display.
 bool note_complete(uint16_t y, uint8_t sprite_height);

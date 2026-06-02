@@ -48,6 +48,10 @@ static const uint8_t lane_voices[NUMBER_INPUT_LANES] = {
     AUDIO_VOICE_F4
 };
 
+static bool lane_hit_locked[NUMBER_INPUT_LANES] = {
+    false, false, false, false
+};
+
 static void delay(volatile uint32_t count)
 {
     while (count--) {
@@ -65,6 +69,8 @@ static void system_init(void)
     audio_silence();
 
     key_init_keys();
+    key_draw_all();
+
     note_init_notes();
 
     game_state = GAME_STATE_START;
@@ -76,19 +82,40 @@ static void reset_gameplay(void)
     audio_silence();
     input_clear_all_edges();
 
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        lane_hit_locked[lane] = false;
+    }
+
     key_init_keys();
+    key_draw_all();
+
     note_init_notes();
 }
 
 static void process_note_hits(uint32_t presses)
 {
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+
+        /*
+         * Unlock the lane only once there are no hittable notes left
+         * in that lane. This prevents rapid repeated key presses from
+         * scoring multiple notes stacked in the same hit window.
+         */
+        if (!note_lane_hit_check(lane)) {
+            lane_hit_locked[lane] = false;
+        }
+
         if (!(presses & lane_masks[lane])) {
             continue;
         }
 
-        if (note_lane_hit_check(lane)) {
-            note_process_hit(lane);
+        if (lane_hit_locked[lane]) {
+            continue;
+        }
+
+        if (note_process_hit(lane)) {
+            lane_hit_locked[lane] = true;
+
             score_register_hit();
 
             audio_silence();
