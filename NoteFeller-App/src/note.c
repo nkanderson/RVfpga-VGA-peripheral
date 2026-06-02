@@ -19,8 +19,8 @@
 
 // Spawn timing: each lane independently waits a random number of routine calls
 // (in the range [BASE, BASE+RANGE)) before it becomes eligible to emit a note.
-#define SPAWN_THRESHOLD_BASE  200u
-#define SPAWN_THRESHOLD_RANGE 150u
+#define SPAWN_THRESHOLD_BASE  30000u
+#define SPAWN_THRESHOLD_RANGE 20000u
 
 #define HIT_WINDOW_PAD_TOP    1
 #define HIT_WINDOW_PAD_BOTTOM 1
@@ -81,8 +81,8 @@ void note_init_notes(void) {
                  (uint32_t)(t[6]) * 10u  + (uint32_t)(t[7])) * 2654435761u;
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        spawn_counters[lane]   = 0;
-        spawn_thresholds[lane] = rand_threshold();
+      spawn_thresholds[lane] = rand_threshold();
+      spawn_counters[lane]   = (uint16_t)(lcg_rand() % spawn_thresholds[lane]);
     }
 }
 
@@ -190,48 +190,68 @@ static uint8_t note_count_active_in_lane(int lane)
 // is activated at y=0.
 void note_spawn_routine(void)
 {
+    bool eligible_lanes[NUMBER_INPUT_LANES] = {false, false, false, false};
+    int eligible_count = 0;
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        if (spawn_counters[lane] < MIN_SPAWN_GAP_TICKS) {
-            spawn_counters[lane]++;
+      if (spawn_counters[lane] < spawn_thresholds[lane]) {
+        spawn_counters[lane]++;
+      } else {
+        if (note_count_active_in_lane(lane) < MAX_ACTIVE_PER_LANE) {
+          eligible_lanes[lane] = true;
+          eligible_count++;
+        } else {
+          // Enforce a gap for full lanes, to avoid lanes having reached
+          // their threshold and then waiting and immediately re-spawning.
+          // Helps prevent clumping of notes across eligible lanes.
+          spawn_counters[lane] = 0;
+          spawn_thresholds[lane] = rand_threshold();
         }
+      }
     }
 
-    if ((lcg_rand() % 100u) >= SPAWN_CHANCE_PERCENT) {
-        return;
+    if (!eligible_count) {
+      return;
     }
 
-    int chosen_lane = lcg_rand() % NUMBER_INPUT_LANES;
+    int chosen_lane = (int)(lcg_rand() % (uint32_t)eligible_count);
+    int eligible_idx = 0;
+    int spawned_lane = -1;
 
-    if (spawn_counters[chosen_lane] < MIN_SPAWN_GAP_TICKS) {
-        return;
-    }
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+      if (eligible_lanes[lane] && eligible_idx++ == chosen_lane) {
+        int slot = -1;
 
-    if (note_count_active_in_lane(chosen_lane) >= MAX_ACTIVE_PER_LANE) {
-        return;
-    }
-
-    int slot = -1;
-
-    for (int i = 0; i < NOTES_PER_LANE; i++) {
-        if (!notes[chosen_lane][i].active) {
-            slot = i;
-            break;
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            if (!notes[lane][i].active) {
+                slot = i;
+                break;
+            }
         }
+
+        if (slot < 0) {
+            continue;
+        }
+
+        Note *note = &notes[lane][slot];
+
+        note->active       = 1;
+        note->hittable     = 0;
+        note->y            = 0;
+        note->tick_ctr     = 0;
+        note->sprite.pos_y = 0;
+
+        vga_set_sprite(&note->sprite);
+
+        spawn_counters[lane] = 0;
+        spawn_thresholds[lane] = rand_threshold();
+        spawned_lane = lane;
+      }
     }
-
-    if (slot < 0) {
-        return;
+    // Re-roll eligible lanes that weren't chosen to prevent note clumping.
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+      if (eligible_lanes[lane] && lane != spawned_lane) {
+          spawn_counters[lane] = 0;
+          spawn_thresholds[lane] = rand_threshold();
+      }
     }
-
-    Note *note = &notes[chosen_lane][slot];
-
-    note->active       = 1;
-    note->hittable     = 0;
-    note->y            = 0;
-    note->tick_ctr     = 0;
-    note->sprite.pos_y = 0;
-
-    vga_set_sprite(&note->sprite);
-
-    spawn_counters[chosen_lane] = 0;
 }
