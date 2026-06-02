@@ -5,19 +5,18 @@
 // Description:
 //   Main gameplay driver for Note Feller.
 //   Owns high-level game state, input polling, score/audio integration,
-//   and coordination between notes, keys, and VGA.
+//   and coordination between note spawning, note movement, and hit checking.
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "globals.h"
 #include "input_controller.h"
 #include "audio.h"
 #include "score.h"
-#include "seven_segment.h"
 #include "vga_sprite.h"
 #include "note.h"
-#include "key.h"
 
 typedef enum {
     GAME_STATE_START = 0,
@@ -29,6 +28,20 @@ typedef enum {
 #define AUDIO_DEFAULT_VOLUME  8u
 
 static GameState game_state = GAME_STATE_START;
+
+static const uint32_t lane_masks[NUMBER_INPUT_LANES] = {
+    INPUT_LANE_0,
+    INPUT_LANE_1,
+    INPUT_LANE_2,
+    INPUT_LANE_3
+};
+
+static const uint8_t lane_voices[NUMBER_INPUT_LANES] = {
+    AUDIO_VOICE_C4,
+    AUDIO_VOICE_D4,
+    AUDIO_VOICE_E4,
+    AUDIO_VOICE_F4
+};
 
 static void delay(volatile uint32_t count)
 {
@@ -43,12 +56,9 @@ static void system_init(void)
     input_init();
     audio_init(AUDIO_DEFAULT_VOLUME);
     score_init();
-
     vga_init();
 
-    key_init_keys();
-    key_draw_all();
-
+    audio_silence();
     note_init_notes();
 }
 
@@ -57,36 +67,22 @@ static void reset_gameplay(void)
     score_reset();
     audio_silence();
     input_clear_all_edges();
-
-    key_init_keys();
-    key_draw_all();
-
     note_init_notes();
-
-    // TODO: Reset real song/chart state here.
-}
-
-static void sync_key_hittable_flags(void)
-{
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        bool lane_hittable = note_lane_hit_check(lane);
-        key_set_hittable(&keys[lane], lane_hittable);
-    }
 }
 
 static void process_note_hits(uint32_t presses)
 {
-    // For each gameplay lane, check if the button was pressed this tick.
-    // key_try_hit returns true only when the lane is hittable and not latched,
-    // so a press without a hittable note in the hit box registers as a miss.
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        if (!(presses & keys[lane].button)) { continue; }
+        if (!(presses & lane_masks[lane])) {
+            continue;
+        }
 
-        if (key_try_hit(&keys[lane], presses)) {
+        if (note_lane_hit_check(lane)) {
             note_process_hit(lane);
             score_register_hit();
+
             audio_silence();
-            audio_set_voice(keys[lane].audio_voice, 1);
+            audio_set_voice(lane_voices[lane], 1);
         } else {
             score_register_miss();
         }
@@ -95,9 +91,6 @@ static void process_note_hits(uint32_t presses)
 
 static void start_screen_update(void)
 {
-    // TODO: Draw start menu/title screen with VGA.
-    // TODO: Show "Press Enter" to start.
-
     uint32_t presses = input_poll_new_presses();
 
     if (presses & INPUT_LANE_4) {
@@ -106,22 +99,14 @@ static void start_screen_update(void)
     }
 }
 
-static void playing_update(void) {
-    uint32_t presses = input_poll_new_presses(); // Latch new button edges for this tick
+static void playing_update(void)
+{
+    uint32_t presses = input_poll_new_presses();
 
-    // Spawn a note if possible
     note_spawn_routine();
-    // Move all active notes down; deactivate any that exit the screen
-    note_movement_routine(); 
-    // Set each key's hittable flag based on current note positions
-    sync_key_hittable_flags(); 
-    // Register hits or misses for any lane buttons pressed this tick
-    process_note_hits(presses); 
-    // Re-sync after hits so consumed notes immediately clear their key flag
-    sync_key_hittable_flags(); 
+    note_movement_routine();
+    process_note_hits(presses);
 
-    // Temporary way to end game.
-    // TODO: Replace with real end condition.
     if (presses & INPUT_LANE_4) {
         game_state = GAME_STATE_END;
     }
@@ -130,9 +115,6 @@ static void playing_update(void) {
 static void end_screen_update(void)
 {
     audio_silence();
-
-    // TODO: Draw final score / restart screen with VGA.
-    // TODO: Display final score visually.
 
     uint32_t presses = input_poll_new_presses();
 
