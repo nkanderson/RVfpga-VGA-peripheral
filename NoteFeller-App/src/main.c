@@ -6,6 +6,10 @@
 //   Main gameplay driver for Note Feller.
 //   Owns high-level game state, input polling, score/audio integration,
 //   and coordination between note spawning, note movement, and hit checking.
+//
+// Controls:
+//   W/A/S/D  -> gameplay lanes
+//   Enter    -> start game / end game / return to start
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
@@ -17,6 +21,7 @@
 #include "score.h"
 #include "vga_sprite.h"
 #include "note.h"
+#include "key.h"
 
 typedef enum {
     GAME_STATE_START = 0,
@@ -52,14 +57,17 @@ static void delay(volatile uint32_t count)
 
 static void system_init(void)
 {
-    game_state = GAME_STATE_START;
     input_init();
     audio_init(AUDIO_DEFAULT_VOLUME);
     score_init();
     vga_init();
 
     audio_silence();
+
+    key_init_keys();
     note_init_notes();
+
+    game_state = GAME_STATE_START;
 }
 
 static void reset_gameplay(void)
@@ -67,6 +75,8 @@ static void reset_gameplay(void)
     score_reset();
     audio_silence();
     input_clear_all_edges();
+
+    key_init_keys();
     note_init_notes();
 }
 
@@ -108,6 +118,7 @@ static void playing_update(void)
     process_note_hits(presses);
 
     if (presses & INPUT_LANE_4) {
+        audio_silence();
         game_state = GAME_STATE_END;
     }
 }
@@ -132,17 +143,21 @@ int main(void)
             case GAME_STATE_START:
                 start_screen_update();
                 break;
+
             case GAME_STATE_PLAYING:
                 playing_update();
                 break;
+
             case GAME_STATE_END:
                 end_screen_update();
                 break;
+
             default:
                 game_state = GAME_STATE_START;
                 break;
         }
-        delay(GAME_LOOP_DELAY);
+
+        //delay(GAME_LOOP_DELAY);
     }
 
     return 0;
