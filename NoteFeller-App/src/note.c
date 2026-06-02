@@ -44,14 +44,12 @@ static uint16_t rand_threshold(void) {
 // Initialize a note
 void note_init(Note *note, uint8_t reg, uint8_t lane) {
     Sprite sprite;
-    for (int i = 0; i < NUMBER_INPUT_LANES; i++) {
-        sprite.reg         = i + NOTE_SPRITE_OFFSET;
-        sprite.sprite_id   = SPRITE_FORM_NOTE_CIRCLE_SOLID;
-        sprite.sprite_type = VGA_SPRITE_16x16;
-        sprite.color       = lane_color_palette[lane];
-        sprite.pos_x       = lane_locations[lane] + (KEY_LANE_W - SPRITE_SMALL) / 2; // Center the note in the lane
-        sprite.pos_y       = KEY_Y;
-    }
+    sprite.reg         = reg;
+    sprite.sprite_id   = SPRITE_FORM_NOTE_CIRCLE_SOLID;
+    sprite.sprite_type = VGA_SPRITE_16x16;
+    sprite.color       = lane_color_palette[lane];
+    sprite.pos_x       = lane_locations[lane] + (KEY_LANE_W - SPRITE_SMALL) / 2;
+    sprite.pos_y       = 0;
 
     note->active = 0;       // Deactivate the note
     note->hittable = 0;
@@ -68,9 +66,12 @@ void note_init_notes(void) {
         }
     }
 
-    // Co-authored by Copilot
-    // Seed the LCG from the RISC-V cycle CSR for non-deterministic spawning.
-    __asm__ volatile ("rdcycle %0" : "=r"(lcg_state));
+    // Seed the LCG from build timestamp to avoid CSR dependency.
+    // __TIME__ expands to "HH:MM:SS" at compile time (standard C predefined macro).
+    const char *t = __TIME__;
+    lcg_state = ((uint32_t)(t[0]) * 100u + (uint32_t)(t[1]) * 10u +
+                 (uint32_t)(t[3]) * 100u + (uint32_t)(t[4]) * 10u +
+                 (uint32_t)(t[6]) * 10u  + (uint32_t)(t[7])) * 2654435761u;
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
         spawn_counters[lane]   = 0;
@@ -108,7 +109,6 @@ void note_movement_routine(void) {
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
         for (int i = 0; i < NOTES_PER_LANE; i++) {
             Note *note = &notes[lane][i];
-            Sprite sprite = note->sprite;
 
             if (!note->active) { continue; }
 
@@ -120,14 +120,14 @@ void note_movement_routine(void) {
             note->tick_ctr = 0;
             note->y += INCREMENT_Y;
             note->sprite.pos_y = note->y;
-            vga_set_sprite(&sprite);
+            vga_set_sprite(&note->sprite);
 
             note->hittable = note_hittable_check(note->y, SPRITE_SMALL);
 
             if (note_complete(note->y, SPRITE_SMALL)) {
                 note->active   = 0;
                 note->hittable = 0;
-                vga_clear_sprite(sprite.reg);
+                vga_clear_sprite(note->sprite.reg);
             }
         }
     }

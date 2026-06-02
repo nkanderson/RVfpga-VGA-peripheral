@@ -39,6 +39,7 @@ static void delay(volatile uint32_t count)
 
 static void system_init(void)
 {
+    game_state = GAME_STATE_START;
     input_init();
     audio_init(AUDIO_DEFAULT_VOLUME);
     score_init();
@@ -149,20 +150,16 @@ int main(void)
             case GAME_STATE_START:
                 start_screen_update();
                 break;
-
             case GAME_STATE_PLAYING:
                 playing_update();
                 break;
-
             case GAME_STATE_END:
                 end_screen_update();
                 break;
-
             default:
                 game_state = GAME_STATE_START;
                 break;
         }
-
         delay(GAME_LOOP_DELAY);
     }
 
