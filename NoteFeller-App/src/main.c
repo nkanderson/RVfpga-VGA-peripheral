@@ -52,6 +52,9 @@ static bool lane_hit_locked[NUMBER_INPUT_LANES] = {
     false, false, false, false
 };
 
+#define AUDIO_SUSTAIN_TICKS 5000u
+static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {0, 0, 0, 0};
+
 static void delay(volatile uint32_t count)
 {
     while (count--) {
@@ -118,7 +121,7 @@ static void process_note_hits(uint32_t presses)
 
             score_register_hit();
 
-            audio_silence();
+            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
             audio_set_voice(lane_voices[lane], 1);
         } else {
             score_register_miss();
@@ -142,6 +145,15 @@ static void playing_update(void)
 
     note_spawn_routine();
     note_movement_routine();
+
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        if (lane_sustain[lane] > 0) {
+            if (--lane_sustain[lane] == 0) {
+                audio_set_voice(lane_voices[lane], 0);
+            }
+        }
+    }
+
     process_note_hits(presses);
 
     if (presses & INPUT_LANE_4) {
