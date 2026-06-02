@@ -19,7 +19,7 @@
 
 // Spawn timing: each lane independently waits a random number of routine calls
 // (in the range [BASE, BASE+RANGE)) before it becomes eligible to emit a note.
-#define SPAWN_THRESHOLD_BASE  30000u
+#define SPAWN_THRESHOLD_BASE  60000u
 #define SPAWN_THRESHOLD_RANGE 20000u
 
 #define HIT_WINDOW_PAD_TOP    1
@@ -27,14 +27,14 @@
 
 #define SPAWN_CHANCE_PERCENT  2u
 #define MIN_SPAWN_GAP_TICKS   80u
-#define MAX_ACTIVE_PER_LANE   2u
+#define MAX_ACTIVE_PER_LANE   3u
 
 // Note array — private to this file; use the note_* API from outside.
 static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE];
 
 // Per-lane spawn state
-static uint16_t spawn_counters[NUMBER_INPUT_LANES];   // calls since last spawn for each lane
-static uint16_t spawn_thresholds[NUMBER_INPUT_LANES]; // randomized target calls before next spawn
+static uint32_t spawn_counters[NUMBER_INPUT_LANES];   // calls since last spawn for each lane
+static uint32_t spawn_thresholds[NUMBER_INPUT_LANES]; // randomized target calls before next spawn
 
 // LCG PRNG (Knuth multiplicative coefficients)
 static uint32_t lcg_state;
@@ -44,8 +44,8 @@ static uint32_t lcg_rand(void) {
     return lcg_state >> 16;
 }
 
-static uint16_t rand_threshold(void) {
-    return (uint16_t)(SPAWN_THRESHOLD_BASE + (lcg_rand() % SPAWN_THRESHOLD_RANGE));
+static uint32_t rand_threshold(void) {
+    return (uint32_t)(SPAWN_THRESHOLD_BASE + (lcg_rand() % SPAWN_THRESHOLD_RANGE));
 }
 
 // Initialize a note
@@ -82,7 +82,7 @@ void note_init_notes(void) {
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
       spawn_thresholds[lane] = rand_threshold();
-      spawn_counters[lane]   = (uint16_t)(lcg_rand() % spawn_thresholds[lane]);
+      spawn_counters[lane]   = (uint32_t)(lcg_rand() % spawn_thresholds[lane]);
     }
 }
 
