@@ -112,7 +112,6 @@ static void delay(volatile unsigned int iters)
     }
 }
 
-// Co-authored by Copilot
 static void setup_static_sprites(void)
 {
     int lane, gap, row;
@@ -125,12 +124,12 @@ static void setup_static_sprites(void)
         s.color = lane_color[lane];
         s.pos_x = NOTE_X(lane);
 
-        s.pos_y = HIT_ROW0;
-        vga_set_sprite(15 + lane, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
-        s.pos_y = HIT_ROW1;
-        vga_set_sprite(20 + lane, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
-        s.pos_y = HIT_ROW2;
-        vga_set_sprite(25 + lane, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+        s.pos_y = HIT_ROW0; s.reg = 15 + lane;
+        vga_set_sprite(&s);
+        s.pos_y = HIT_ROW1; s.reg = 20 + lane;
+        vga_set_sprite(&s);
+        s.pos_y = HIT_ROW2; s.reg = 25 + lane;
+        vga_set_sprite(&s);
     }
 
     // Dotted lane separators — 4 gaps × 3 rows.
@@ -143,8 +142,8 @@ static void setup_static_sprites(void)
             s.pos_y = dot_ys[row];
             for (gap = 0; gap < 4; gap++) {
                 s.pos_x = SEP_X(gap);
-                vga_set_sprite(30 + row * 4 + gap,
-                               s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+                s.reg = 30 + row * 4 + gap;
+                vga_set_sprite(&s);
             }
         }
     }
@@ -156,14 +155,16 @@ static void setup_static_sprites(void)
     s.pos_y       = FRAME_TOP;
     for (int t = 0; t < N_LANES; t++) {
         s.pos_x = LANE_START_X + t * LANE_W;
-        vga_set_sprite(42 + t, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+        s.reg = 42 + t;
+        vga_set_sprite(&s);
     }
 
     // Bottom border — same span, just below hit zone.
     s.pos_y = FRAME_BOTTOM;
     for (int t = 0; t < N_LANES; t++) {
         s.pos_x = LANE_START_X + t * LANE_W;
-        vga_set_sprite(47 + t, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+        s.reg = 47 + t;
+        vga_set_sprite(&s);
     }
 
     // Left border — 4 × 2x32 segments.
@@ -171,7 +172,8 @@ static void setup_static_sprites(void)
     s.pos_x     = BORDER_LEFT_X;
     for (int seg = 0; seg < 4; seg++) {
         s.pos_y = FRAME_TOP + 2 + seg * 32;
-        vga_set_sprite(52 + seg, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+        s.reg = 52 + seg;
+        vga_set_sprite(&s);
     }
 
     // Right border — 4 × 2x32 segments.
@@ -179,25 +181,26 @@ static void setup_static_sprites(void)
     s.pos_x     = BORDER_RIGHT_X;
     for (int seg = 0; seg < 4; seg++) {
         s.pos_y = FRAME_TOP + 2 + seg * 32;
-        vga_set_sprite(56 + seg, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+        s.reg = 56 + seg;
+        vga_set_sprite(&s);
     }
 
     // Corners — TL, TR, BL, BR.
     s.sprite_id = SPRITE_FORM_CORNER_TOP_LEFT;
-    s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_TOP;
-    vga_set_sprite(60, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+    s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_TOP; s.reg = 60;
+    vga_set_sprite(&s);
 
     s.sprite_id = SPRITE_FORM_CORNER_TOP_RIGHT;
-    s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_TOP;
-    vga_set_sprite(61, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+    s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_TOP; s.reg = 61;
+    vga_set_sprite(&s);
 
     s.sprite_id = SPRITE_FORM_CORNER_BOTTOM_LEFT;
-    s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_BOTTOM;
-    vga_set_sprite(62, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+    s.pos_x = BORDER_LEFT_X;  s.pos_y = FRAME_BOTTOM; s.reg = 62;
+    vga_set_sprite(&s);
 
     s.sprite_id = SPRITE_FORM_CORNER_BOTTOM_RIGHT;
-    s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_BOTTOM;
-    vga_set_sprite(63, s.sprite_id, s.sprite_type, s.color, s.pos_x, s.pos_y);
+    s.pos_x = BORDER_RIGHT_X; s.pos_y = FRAME_BOTTOM; s.reg = 63;
+    vga_set_sprite(&s);
 }
 
 // -----------------------------------------------------------------------------
@@ -226,7 +229,7 @@ int main(void)
 
         for (wave = 0; wave < N_WAVES; wave++) {
             for (lane = 0; lane < N_LANES; lane++) {
-                int reg = wave * N_LANES + lane;
+                note.reg = wave * N_LANES + lane;
 
                 note_y[lane][wave] += wave_speed[wave];
 
@@ -238,10 +241,9 @@ int main(void)
                     note.color = lane_color[lane];
                     note.pos_x = NOTE_X(lane);
                     note.pos_y = (uint16_t)note_y[lane][wave];
-                    vga_set_sprite(reg, note.sprite_id, note.sprite_type,
-                                   note.color, note.pos_x, note.pos_y);
+                    vga_set_sprite(&note);
                 } else {
-                    vga_clear_sprite(reg);
+                    vga_clear_sprite(note.reg);
                 }
             }
         }

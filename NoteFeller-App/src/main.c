@@ -1,159 +1,203 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:    Sajida Sayyad
-// Create Date: 26/05/2026
-// File Name:   main.c
-// Project Name: Single-Lane Rhythm Game
+// File Name: main.c
+// Project Name: Note Feller
+//
 // Description:
-//   Main game logic with continuous note spawning.
-//   - Game starts when BTNC is pressed.
-//   - Notes spawn continuously and move slowly across LEDs (0 to 10).
-//   - Player must press BTNR (4th LED), BTNU (6th LED), BTNL (8th LED), or BTND (10th LED).
-//   - Successful hits trigger unique audio tones, LED feedback, and score increments.
-//   - If the note is missed, it disappears, and no score is awarded.
+//   Main gameplay driver for Note Feller.
+//   Owns high-level game state, input polling, score/audio integration,
+//   and coordination between note spawning, note movement, and hit checking.
+//
+// Controls:
+//   W/A/S/D  -> gameplay lanes
+//   Enter    -> start game / end game / return to start
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>
-#include "audio.h"            // For audio control
-#include "input_controller.h" // For input button masks
-#include "gpio.h"             // For GPIO control
-#include "globals.h"          // For game state and constants
-#include "types.h"            // For Key and Note structures
+#include <stdbool.h>
 
-// --- Game State (Definitions) ---
-int game_started = 0;          // 1 if the game is running, 0 otherwise
-int note_position = 0;         // Current LED position of the note (0-10)
-int score = 0;                 // Player's score
-int note_active = 0;           // 1 if a note is active, 0 otherwise
+#include "globals.h"
+#include "input_controller.h"
+#include "audio.h"
+#include "score.h"
+#include "vga_sprite.h"
+#include "note.h"
+#include "key.h"
 
-// Simple delay function for timing.
-static void delay(volatile uint32_t count) {
-    while (count--) { __asm__ volatile ("nop"); }
+typedef enum {
+    GAME_STATE_START = 0,
+    GAME_STATE_PLAYING,
+    GAME_STATE_END
+} GameState;
+
+#define GAME_LOOP_DELAY       50000u
+#define AUDIO_DEFAULT_VOLUME  8u
+
+static GameState game_state = GAME_STATE_START;
+
+static const uint32_t lane_masks[NUMBER_INPUT_LANES] = {
+    INPUT_LANE_0,
+    INPUT_LANE_1,
+    INPUT_LANE_2,
+    INPUT_LANE_3
+};
+
+static const uint8_t lane_voices[NUMBER_INPUT_LANES] = {
+    AUDIO_VOICE_C4,
+    AUDIO_VOICE_D4,
+    AUDIO_VOICE_E4,
+    AUDIO_VOICE_F4
+};
+
+static bool lane_hit_locked[NUMBER_INPUT_LANES] = {
+    false, false, false, false
+};
+
+#define AUDIO_SUSTAIN_TICKS 5000u
+static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {0, 0, 0, 0};
+
+static void delay(volatile uint32_t count)
+{
+    while (count--) {
+        __asm__ volatile ("nop");
+    }
 }
 
-// Initializes the game (input, audio, GPIO).
-void game_init(void) {
-    input_init();              // Initialize input controller
-    audio_init(8);             // Initialize audio with default volume 8
-    gpio_init();               // Initialize GPIO
-    game_started = 0;          // Game starts in "not started" state
-    note_position = 0;         // Note starts at LED 0
-    score = 0;                 // Reset score
-    note_active = 0;           // No note is active at startup
-    GPIO_OUTPUT = 0;           // Turn off all LEDs
+static void system_init(void)
+{
+    input_init();
+    audio_init(AUDIO_DEFAULT_VOLUME);
+    score_init();
+    vga_init();
+
+    audio_silence();
+
+    key_init_keys();
+    key_draw_all();
+
+    note_init_notes();
+
+    game_state = GAME_STATE_START;
 }
 
-// Blinks an LED for a short duration.
-void blink_led(int led) {
-    GPIO_OUTPUT |= (1U << led);  // Turn on the LED
-    delay(HIT_LED_DURATION);     // Longer delay for visibility
-    GPIO_OUTPUT &= ~(1U << led); // Turn off the LED
+static void reset_gameplay(void)
+{
+    score_reset();
+    audio_silence();
+    input_clear_all_edges();
+
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        lane_hit_locked[lane] = false;
+    }
+
+    key_init_keys();
+    key_draw_all();
+
+    note_init_notes();
 }
 
-// Spawns a new note at LED 0.
-void spawn_note(void) {
-    note_active = 1;            // Activate the note
-    note_position = 0;          // Start note at LED 0
-    GPIO_OUTPUT = (1U << note_position);  // Light up LED 0
-}
+static void process_note_hits(uint32_t presses)
+{
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
 
-// Main game loop.
-int main(void) {
-    game_init();  // Initialize the game
-
-    while (1) {
-        // Start game on BTNC press (INPUT_LANE_4)
-        if (!game_started && (input_poll_new_presses() & INPUT_LANE_4)) {
-            game_started = 1;    // Set game as started
-            spawn_note();        // Spawn the first note
+        /*
+         * Unlock the lane only once there are no hittable notes left
+         * in that lane. This prevents rapid repeated key presses from
+         * scoring multiple notes stacked in the same hit window.
+         */
+        if (!note_lane_hit_check(lane)) {
+            lane_hit_locked[lane] = false;
         }
 
-        if (game_started) {
-            // Check if no note is active and spawn a new one
-            if (!note_active) {
-                spawn_note();
-            }
+        if (!(presses & lane_masks[lane])) {
+            continue;
+        }
 
-            // Move the note to the next LED if it is active
-            if (note_active) {
-                note_position++;
-                GPIO_OUTPUT = (1U << note_position);  // Light up the current LED
+        if (lane_hit_locked[lane]) {
+            continue;
+        }
 
-                // Check for hits at specific LED positions
-                uint32_t input = input_poll_new_presses();
+        if (note_process_hit(lane)) {
+            lane_hit_locked[lane] = true;
 
-                // --- Hit at 4th LED (BTNR) ---
-                if (note_position == 4 && (input & INPUT_LANE_1)) {
-                    // Play audio tone for hit
-                    audio_silence();
-                    audio_set_voice(AUDIO_VOICE_C4, 1);
+            score_register_hit();
 
-                    // Blink LED 11 (hit indication) and LED 15 (score increment)
-                    blink_led(11);
-                    blink_led(15);
-
-                    // Update score
-                    score += SCORE_PER_HIT;
-
-                    // Deactivate the note
-                    note_active = 0;
-                }
-                // --- Hit at 6th LED (BTNU) ---
-                else if (note_position == 6 && (input & INPUT_LANE_2)) {
-                    // Play audio tone for hit
-                    audio_silence();
-                    audio_set_voice(AUDIO_VOICE_D4, 1);
-
-                    // Blink LED 12 (hit indication) and LED 15 (score increment)
-                    blink_led(12);
-                    blink_led(15);
-
-                    // Update score
-                    score += SCORE_PER_HIT;
-
-                    // Deactivate the note
-                    note_active = 0;
-                }
-                // --- Hit at 8th LED (BTNL) ---
-                else if (note_position == 8 && (input & INPUT_LANE_0)) {
-                    // Play audio tone for hit
-                    audio_silence();
-                    audio_set_voice(AUDIO_VOICE_E4, 1);
-
-                    // Blink LED 13 (hit indication) and LED 15 (score increment)
-                    blink_led(13);
-                    blink_led(15);
-
-                    // Update score
-                    score += SCORE_PER_HIT;
-
-                    // Deactivate the note
-                    note_active = 0;
-                }
-                // --- Hit at 10th LED (BTND) ---
-                else if (note_position == 10 && (input & INPUT_LANE_3)) {
-                    // Play audio tone for hit
-                    audio_silence();
-                    audio_set_voice(AUDIO_VOICE_F4, 1);
-
-                    // Blink LED 14 (hit indication) and LED 15 (score increment)
-                    blink_led(14);
-                    blink_led(15);
-
-                    // Update score
-                    score += SCORE_PER_HIT;
-
-                    // Deactivate the note (will respawn in the next loop)
-                    note_active = 0;
-                }
-                // --- Missed Note ---
-                else if (note_position > MAX_LED_POSITION) {
-                    note_active = 0;  // Deactivate the note
-                    GPIO_OUTPUT = 0;  // Turn off all LEDs
-                }
-            }
-
-            delay(NOTE_SPEED);  // Control note speed (slower)
+            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
+            audio_set_voice(lane_voices[lane], 1);
+        } else {
+            score_register_miss();
         }
     }
+}
+
+static void start_screen_update(void)
+{
+    uint32_t presses = input_poll_new_presses();
+
+    if (presses & INPUT_LANE_4) {
+        reset_gameplay();
+        game_state = GAME_STATE_PLAYING;
+    }
+}
+
+static void playing_update(void)
+{
+    uint32_t presses = input_poll_new_presses();
+
+    note_spawn_routine();
+    note_movement_routine();
+
+    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        if (lane_sustain[lane] > 0) {
+            if (--lane_sustain[lane] == 0) {
+                audio_set_voice(lane_voices[lane], 0);
+            }
+        }
+    }
+
+    process_note_hits(presses);
+
+    if (presses & INPUT_LANE_4) {
+        audio_silence();
+        game_state = GAME_STATE_END;
+    }
+}
+
+static void end_screen_update(void)
+{
+    audio_silence();
+
+    uint32_t presses = input_poll_new_presses();
+
+    if (presses & INPUT_LANE_4) {
+        game_state = GAME_STATE_START;
+    }
+}
+
+int main(void)
+{
+    system_init();
+
+    while (1) {
+        switch (game_state) {
+            case GAME_STATE_START:
+                start_screen_update();
+                break;
+
+            case GAME_STATE_PLAYING:
+                playing_update();
+                break;
+
+            case GAME_STATE_END:
+                end_screen_update();
+                break;
+
+            default:
+                game_state = GAME_STATE_START;
+                break;
+        }
+
+        //delay(GAME_LOOP_DELAY);
+    }
+
     return 0;
 }
