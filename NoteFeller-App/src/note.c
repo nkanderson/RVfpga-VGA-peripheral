@@ -63,6 +63,7 @@ void note_init(Note *note, uint8_t reg, uint8_t lane) {
     note->y = 0;            // Start at the top of screen
     note->sprite = sprite;  // Assign the sprite
     note->tick_ctr = 0;     // Reset the tick counter
+    vga_clear_sprite(note->sprite.reg); //Clear the sprite from the screen
 }
 
 void note_init_notes(void) {
