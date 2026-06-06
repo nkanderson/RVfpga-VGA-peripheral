@@ -88,10 +88,10 @@ module wb_input_controller (
     //
     // PS/2 Set-2 scan codes:
     //
-    // W     = 0x1D
     // A     = 0x1C
     // S     = 0x1B
     // D     = 0x23
+    // F     = 0x2B
     // Enter = 0x5A
     //
     // Break codes:
@@ -121,13 +121,13 @@ module wb_input_controller (
                 // -------------------------------------------------------------
                 if (!break_code) begin
                     case (i_usb_keycode)
-    
-                        8'h1D: usb_input_state[0] <= 1'b1; // W
-                        8'h1C: usb_input_state[1] <= 1'b1; // A
-                        8'h1B: usb_input_state[2] <= 1'b1; // S
-                        8'h23: usb_input_state[3] <= 1'b1; // D
+                    
+                        8'h1C: usb_input_state[0] <= 1'b1; // A
+                        8'h1B: usb_input_state[1] <= 1'b1; // S
+                        8'h23: usb_input_state[2] <= 1'b1; // D
+                        8'h2B: usb_input_state[3] <= 1'b1; // F
                         8'h5A: usb_input_state[4] <= 1'b1; // Enter
-    
+                    
                         default: begin
                         end
                     endcase
@@ -138,13 +138,13 @@ module wb_input_controller (
                     // Key release events
                     // ---------------------------------------------------------
                     case (i_usb_keycode)
-    
-                        8'h1D: usb_input_state[0] <= 1'b0; // W
-                        8'h1C: usb_input_state[1] <= 1'b0; // A
-                        8'h1B: usb_input_state[2] <= 1'b0; // S
-                        8'h23: usb_input_state[3] <= 1'b0; // D
+                    
+                        8'h1C: usb_input_state[0] <= 1'b0; // A
+                        8'h1B: usb_input_state[1] <= 1'b0; // S
+                        8'h23: usb_input_state[2] <= 1'b0; // D
+                        8'h2B: usb_input_state[3] <= 1'b0; // F
                         8'h5A: usb_input_state[4] <= 1'b0; // Enter
-    
+                    
                         default: begin
                         end
                     endcase
