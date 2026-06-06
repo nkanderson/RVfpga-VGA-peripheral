@@ -11,8 +11,6 @@
 
 #include "key.h"
 
-Key keys[NUMBER_INPUT_LANES];
-
 void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite)
 {
     key->button      = button_mask;
@@ -29,7 +27,7 @@ void key_init_keys(void)
         Sprite sprite;
 
         sprite.reg         = KEY_SPRITE_OFFSET + i;
-        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID;
+        sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_HOLLOW;
         sprite.sprite_type = VGA_SPRITE_32x32;
         sprite.color       = lane_color_palette[i];
         sprite.pos_x       = lane_locations[i];
@@ -83,16 +81,10 @@ bool key_try_hit(Key* key, uint32_t input_edges)
     return false;
 }
 
-void key_update_sprite_color(Key* key, uint16_t new_color)
-{
-    key->sprite.color = new_color;
-    key_draw(key);
-}
+void key_update_sprite(uint8_t key_index, uint8_t new_sprite_id, uint8_t new_sprite_type, uint16_t new_color) {
+    keys[key_index].sprite.color       = new_color;
+    keys[key_index].sprite.sprite_id   = new_sprite_id;
+    keys[key_index].sprite.sprite_type = new_sprite_type;
 
-void key_update_sprite_form(Key* key, uint8_t new_sprite_id, uint8_t new_sprite_type)
-{
-    key->sprite.sprite_id   = new_sprite_id;
-    key->sprite.sprite_type = new_sprite_type;
-
-    key_draw(key);
+    key_draw(&keys[key_index]);
 }

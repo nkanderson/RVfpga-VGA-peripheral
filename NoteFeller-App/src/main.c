@@ -95,36 +95,91 @@ static void reset_gameplay(void)
     note_init_notes();
 }
 
-static void process_note_hits(uint32_t presses)
-{
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+//static void process_note_hits(uint32_t presses)
+//{
+//    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+//
+//        /*
+//         * Unlock the lane only once there are no hittable notes left
+//         * in that lane. This prevents rapid repeated key presses from
+//         * scoring multiple notes stacked in the same hit window.
+//         */
+//        if (!note_lane_hit_check(lane)) {
+//            lane_hit_locked[lane] = false;
+//        }
+//
+//        if (!(presses & lane_masks[lane])) {
+//            continue;
+//        }
+//
+//        if (lane_hit_locked[lane]) {
+//            continue;
+//        }
+//
+//        if (note_process_hit(lane)) {
+//            lane_hit_locked[lane] = true;
+//
+//            score_register_hit();
+//
+//            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
+//            audio_set_voice(lane_voices[lane], 1);
+//        } else {
+//            score_register_miss();
+//        }
+//    }
+//}
 
-        /*
-         * Unlock the lane only once there are no hittable notes left
-         * in that lane. This prevents rapid repeated key presses from
-         * scoring multiple notes stacked in the same hit window.
-         */
-        if (!note_lane_hit_check(lane)) {
-            lane_hit_locked[lane] = false;
-        }
+/* ---------------------------------------------------------------------------
+ * Per-lane FSM state
+ * ---------------------------------------------------------------------------
+ * LANE_IDLE          – no active hit; lane is ready to accept a new press.
+ * LANE_HIT_DETECTED  – a hit was registered this press; lane is locked until
+ *                      the button is released (press bit clears for this lane).
+ * ---------------------------------------------------------------------------
+ */
+typedef enum {
+    LANE_IDLE,
+    LANE_HIT_DETECTED,
+} LaneState;
 
-        if (!(presses & lane_masks[lane])) {
-            continue;
-        }
+static LaneState lane_state[NUMBER_INPUT_LANES];
 
-        if (lane_hit_locked[lane]) {
-            continue;
-        }
+static void process_note_hits(uint32_t presses) {
+    for (uint8_t lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
 
-        if (note_process_hit(lane)) {
-            lane_hit_locked[lane] = true;
+        bool button_pressed = (presses & lane_masks[lane]) != 0;
 
-            score_register_hit();
+        switch (lane_state[lane]) {
+        case LANE_IDLE:
+            if (!button_pressed) {
+                break;
+            }
+            
+            if (note_process_hit(lane)) {
+                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_SOLID, VGA_SPRITE_32x32, VGA_GREEN);
+                lane_state[lane] = LANE_HIT_DETECTED;
+                score_register_hit();
+                lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
+                audio_set_voice(lane_voices[lane], 1);
+            } else {
+                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_SOLID, VGA_SPRITE_32x32, VGA_RED);
+                score_register_miss();
+            }
+            break;
 
-            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
-            audio_set_voice(lane_voices[lane], 1);
-        } else {
-            score_register_miss();
+        case LANE_HIT_DETECTED:
+            if (button_pressed) {
+                break;
+            }
+
+            if (!button_pressed) {
+                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_HOLLOW, VGA_SPRITE_32x32, lane_color_palette[lane]);
+            }
+            break;
+        default:
+            /* Unreachable – reset to safe state. */
+            lane_state[lane] = LANE_IDLE;
+            break;
         }
     }
 }

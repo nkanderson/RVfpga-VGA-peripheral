@@ -52,10 +52,10 @@ static uint32_t rand_threshold(void) {
 void note_init(Note *note, uint8_t reg, uint8_t lane) {
     Sprite sprite;
     sprite.reg         = reg;
-    sprite.sprite_id   = SPRITE_FORM_NOTE_CIRCLE_SOLID;
-    sprite.sprite_type = VGA_SPRITE_16x16;
+    sprite.sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID;
+    sprite.sprite_type = VGA_SPRITE_32x32;
     sprite.color       = lane_color_palette[lane];
-    sprite.pos_x       = lane_locations[lane] + (KEY_LANE_W - SPRITE_SMALL) / 2;
+    sprite.pos_x       = lane_locations[lane] + (KEY_LANE_W - SPRITE_BIG) / 2;
     sprite.pos_y       = 0;
 
     note->active = 0;       // Deactivate the note
@@ -133,9 +133,9 @@ void note_movement_routine(void) {
             note->sprite.pos_y = note->y;
             vga_set_sprite(&note->sprite);
 
-            note->hittable = note_hittable_check(note->y, SPRITE_SMALL);
+            note->hittable = note_hittable_check(note->y, SPRITE_BIG);
 
-            if (note_complete(note->y, SPRITE_SMALL)) {
+            if (note_complete(note->y, SPRITE_BIG)) {
                 note->active   = 0;
                 note->hittable = 0;
                 vga_clear_sprite(note->sprite.reg);
