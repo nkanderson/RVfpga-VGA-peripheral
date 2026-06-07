@@ -68,10 +68,6 @@
 #define VGA_YELLOW                 VGA_COLOR(15, 15,  0)
 #define VGA_CYAN                   VGA_COLOR(0,  15, 15)
 #define VGA_MAGENTA                VGA_COLOR(15,  0, 15)
-#define VGA_GREEN                  VGA_COLOR(0,  15,  0)
-#define VGA_RED                    VGA_COLOR(15,  0,  0)
-#define VGA_YELLOW                 VGA_COLOR(15, 15,  0)
-#define VGA_BLUE                   VGA_COLOR(0,   0, 15)
 #define VGA_ORANGE                 VGA_COLOR(15,  8,  0)
 
 // -----------------------------------------------------------------------------
