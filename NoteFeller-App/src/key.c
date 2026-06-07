@@ -18,9 +18,6 @@ void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite
     key->button      = button_mask;
     key->audio_voice = audio_voice;
     key->sprite      = sprite;
-
-    key->hittable    = false;
-    key->hit_latched = false;
 }
 
 void key_init_keys(void)
@@ -54,33 +51,6 @@ void key_draw_all(void)
     for (int i = 0; i < NUMBER_INPUT_LANES; i++) {
         key_draw(&keys[i]);
     }
-}
-
-void key_set_hittable(Key* key, bool hittable)
-{
-    if (hittable && !key->hittable) {
-        key->hit_latched = false;
-    }
-
-    key->hittable = hittable;
-}
-
-bool key_try_hit(Key* key, uint32_t input_edges)
-{
-    if (!key->hittable) {
-        return false;
-    }
-
-    if (key->hit_latched) {
-        return false;
-    }
-
-    if (input_edges & key->button) {
-        key->hit_latched = true;
-        return true;
-    }
-
-    return false;
 }
 
 void key_update_sprite(uint8_t key_index,
