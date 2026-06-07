@@ -27,7 +27,6 @@
 
 #define SPAWN_CHANCE_PERCENT  2u
 #define MIN_SPAWN_GAP_TICKS   80u
-#define MAX_ACTIVE_PER_LANE   3u
 
 // Note array — private to this file; use the note_* API from outside.
 static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE];
@@ -197,7 +196,7 @@ void note_spawn_routine(void)
       if (spawn_counters[lane] < spawn_thresholds[lane]) {
         spawn_counters[lane]++;
       } else {
-        if (note_count_active_in_lane(lane) < MAX_ACTIVE_PER_LANE) {
+        if (note_count_active_in_lane(lane) < NOTES_PER_LANE) {
           eligible_lanes[lane] = true;
           eligible_count++;
         } else {
