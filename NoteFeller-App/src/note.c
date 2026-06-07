@@ -7,6 +7,7 @@
 //   Handles note spawning, movement, and hit detection.
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
 #include "note.h"
 #include "globals.h"       
 
@@ -17,10 +18,8 @@
 #define SPRITE_SMALL   16    // Height/width of a VGA_SPRITE_16x16 sprite in pixels
 #define SPRITE_BIG     32    // Height/width of a VGA_SPRITE_32x32 sprite in pixels
 
-// Spawn timing: each lane independently waits a random number of routine calls
-// (in the range [BASE, BASE+RANGE)) before it becomes eligible to emit a note.
-#define SPAWN_THRESHOLD_BASE  60000u
-#define SPAWN_THRESHOLD_RANGE 20000u
+#define SPAWN_THRESHOLD 60000
+#define MAX_NOTES_PER_WAVE 4
 
 #define HIT_WINDOW_PAD_TOP    0
 #define HIT_WINDOW_PAD_BOTTOM 0
@@ -30,22 +29,6 @@
 
 // Note array — private to this file; use the note_* API from outside.
 static Note notes[NUMBER_INPUT_LANES][NOTES_PER_LANE];
-
-// Per-lane spawn state
-static uint32_t spawn_counters[NUMBER_INPUT_LANES];   // calls since last spawn for each lane
-static uint32_t spawn_thresholds[NUMBER_INPUT_LANES]; // randomized target calls before next spawn
-
-// LCG PRNG (Knuth multiplicative coefficients)
-static uint32_t lcg_state;
-
-static uint32_t lcg_rand(void) {
-    lcg_state = lcg_state * 1664525u + 1013904223u;
-    return lcg_state >> 16;
-}
-
-static uint32_t rand_threshold(void) {
-    return (uint32_t)(SPAWN_THRESHOLD_BASE + (lcg_rand() % SPAWN_THRESHOLD_RANGE));
-}
 
 // Initialize a note
 void note_init(Note *note, uint8_t reg, uint8_t lane) {
@@ -73,17 +56,13 @@ void note_init_notes(void) {
         }
     }
 
-    // Seed the LCG from build timestamp to avoid CSR dependency.
+    // Seed srand from build timestamp to avoid CSR dependency.
     // __TIME__ expands to "HH:MM:SS" at compile time (standard C predefined macro).
     const char *t = __TIME__;
-    lcg_state = ((uint32_t)(t[0]) * 100u + (uint32_t)(t[1]) * 10u +
-                 (uint32_t)(t[3]) * 100u + (uint32_t)(t[4]) * 10u +
-                 (uint32_t)(t[6]) * 10u  + (uint32_t)(t[7])) * 2654435761u;
-
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-      spawn_thresholds[lane] = rand_threshold();
-      spawn_counters[lane]   = (uint32_t)(lcg_rand() % spawn_thresholds[lane]);
-    }
+    unsigned int seed = ((unsigned int)(t[0]) * 100u + (unsigned int)(t[1]) * 10u +
+                         (unsigned int)(t[3]) * 100u + (unsigned int)(t[4]) * 10u +
+                         (unsigned int)(t[6]) * 10u  + (unsigned int)(t[7])) * 2654435761u;
+    srand(seed);
 }
 
 
@@ -183,75 +162,44 @@ static uint8_t note_count_active_in_lane(int lane)
     return count;
 }
 
-// Co-authored by Copilot
-// Spawns a new note in a random eligible lane.
-// A lane is eligible once its counter reaches its randomized threshold AND it
-// has a free note slot. One eligible lane is chosen at random and one note
-// is activated at y=0.
+// Spawns a random number of notes on random eligible lanes.
+// A static counter increments each call. Once it exceeds SPAWN_THRESHOLD,
+// rand() determines how many notes to spawn (1 to MAX_NOTES_PER_WAVE).
+// Each note is assigned a random lane; if that lane is full the note is
+// skipped. The counter resets regardless.
 void note_spawn_routine(void)
 {
-    bool eligible_lanes[NUMBER_INPUT_LANES] = {false, false, false, false};
-    int eligible_count = 0;
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-      if (spawn_counters[lane] < spawn_thresholds[lane]) {
-        spawn_counters[lane]++;
-      } else {
-        if (note_count_active_in_lane(lane) < NOTES_PER_LANE) {
-          eligible_lanes[lane] = true;
-          eligible_count++;
-        } else {
-          // Enforce a gap for full lanes, to avoid lanes having reached
-          // their threshold and then waiting and immediately re-spawning.
-          // Helps prevent clumping of notes across eligible lanes.
-          spawn_counters[lane] = 0;
-          spawn_thresholds[lane] = rand_threshold();
-        }
-      }
+    static uint32_t call_counter = 0;
+
+    call_counter++;
+    if (call_counter < SPAWN_THRESHOLD) {
+        return;
     }
+    call_counter = 0;
 
-    if (!eligible_count) {
-      return;
-    }
+    int notes_to_spawn = 1 + (rand() % MAX_NOTES_PER_WAVE);
 
-    int chosen_lane = (int)(lcg_rand() % (uint32_t)eligible_count);
-    int eligible_idx = 0;
-    int spawned_lane = -1;
+    for (int n = 0; n < notes_to_spawn; n++) {
+        int lane = rand() % NUMBER_INPUT_LANES;
 
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-      if (eligible_lanes[lane] && eligible_idx++ == chosen_lane) {
-        int slot = -1;
-
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            if (!notes[lane][i].active) {
-                slot = i;
-                break;
-            }
-        }
-
-        if (slot < 0) {
+        // If the lane is full, skip this note.
+        if (note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
             continue;
         }
 
-        Note *note = &notes[lane][slot];
+        // Activate the first free slot in the chosen lane.
+        for (int i = 0; i < NOTES_PER_LANE; i++) {
+            Note *note = &notes[lane][i];
 
-        note->active       = 1;
-        note->hittable     = 0;
-        note->y            = 0;
-        note->tick_ctr     = 0;
-        note->sprite.pos_y = 0;
-
-        vga_set_sprite(&note->sprite);
-
-        spawn_counters[lane] = 0;
-        spawn_thresholds[lane] = rand_threshold();
-        spawned_lane = lane;
-      }
-    }
-    // Re-roll eligible lanes that weren't chosen to prevent note clumping.
-    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-      if (eligible_lanes[lane] && lane != spawned_lane) {
-          spawn_counters[lane] = 0;
-          spawn_thresholds[lane] = rand_threshold();
-      }
+            if (!note->active) {
+                note->active       = 1;
+                note->hittable     = 0;
+                note->y            = 0;
+                note->tick_ctr     = 0;
+                note->sprite.pos_y = 0;
+                vga_set_sprite(&note->sprite);
+                break;
+            }
+        }
     }
 }
