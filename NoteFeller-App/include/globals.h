@@ -22,7 +22,7 @@
 #define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
 #define MAX_NOTES_IN_GAME 24          // Maximum number of notes that can be active at once
 
-#define NUMBER_COMBO_SPRITES 3
+#define NUMBER_COMBO_SPRITES 2
 
 #define SCREEN_W       640
 #define SCREEN_H       480
