@@ -29,8 +29,24 @@ typedef enum {
     GAME_STATE_END
 } GameState;
 
+/*
+ * Per-lane input state.
+ *
+ * LANE_IDLE:
+ *   The lane is ready to accept a new key press.
+ *
+ * LANE_HIT_DETECTED:
+ *   A press has already been processed for this lane.
+ *   The lane remains locked until the key is released.
+ */
+typedef enum {
+    LANE_IDLE = 0,
+    LANE_HIT_DETECTED
+} LaneState;
+
 #define GAME_LOOP_DELAY       50000u
 #define AUDIO_DEFAULT_VOLUME  8u
+#define AUDIO_SUSTAIN_TICKS   5000u
 
 static GameState game_state = GAME_STATE_START;
 
@@ -48,17 +64,97 @@ static const uint8_t lane_voices[NUMBER_INPUT_LANES] = {
     AUDIO_VOICE_F4
 };
 
-static bool lane_hit_locked[NUMBER_INPUT_LANES] = {
-    false, false, false, false
+static LaneState lane_state[NUMBER_INPUT_LANES] = {
+    LANE_IDLE, LANE_IDLE, LANE_IDLE, LANE_IDLE
 };
 
-#define AUDIO_SUSTAIN_TICKS 5000u
-static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {0, 0, 0, 0};
+static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {
+    0, 0, 0, 0
+};
 
 static void delay(volatile uint32_t count)
 {
     while (count--) {
         __asm__ volatile ("nop");
+    }
+}
+
+static void reset_lane_visual(uint8_t lane)
+{
+    key_update_sprite(
+        lane,
+        SPRITE_FORM_CHORD_CIRCLE_HOLLOW,
+        VGA_SPRITE_32x32,
+        lane_color_palette[lane]
+    );
+}
+
+static void set_lane_hit_visual(uint8_t lane)
+{
+    key_update_sprite(
+        lane,
+        SPRITE_FORM_CHORD_CIRCLE_SOLID,
+        VGA_SPRITE_32x32,
+        VGA_GREEN
+    );
+}
+
+static void set_lane_miss_visual(uint8_t lane)
+{
+    key_update_sprite(
+        lane,
+        SPRITE_FORM_CHORD_CIRCLE_SOLID,
+        VGA_SPRITE_32x32,
+        VGA_RED
+    );
+}
+
+static void process_note_hits(uint32_t presses)
+{
+    uint32_t held = input_get_status();
+
+    for (uint8_t lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
+        bool new_press = (presses & lane_masks[lane]) != 0;
+        bool is_held   = (held    & lane_masks[lane]) != 0;
+
+        /*
+         * Once the key is released, return the lane target to its normal
+         * color and allow the next press to be processed.
+         */
+        if (!is_held) {
+            reset_lane_visual(lane);
+            lane_state[lane] = LANE_IDLE;
+            continue;
+        }
+
+        /*
+         * Holding a key should not repeatedly score or miss.
+         * Only the new-press edge should be processed.
+         */
+        if (!new_press) {
+            continue;
+        }
+
+        if (lane_state[lane] != LANE_IDLE) {
+            continue;
+        }
+
+        if (note_process_hit(lane)) {
+            set_lane_hit_visual(lane);
+
+            lane_state[lane] = LANE_HIT_DETECTED;
+
+            score_register_hit();
+
+            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
+            audio_set_voice(lane_voices[lane], 1);
+        } else {
+            set_lane_miss_visual(lane);
+
+            lane_state[lane] = LANE_HIT_DETECTED;
+
+            score_register_miss();
+        }
     }
 }
 
@@ -86,102 +182,15 @@ static void reset_gameplay(void)
     input_clear_all_edges();
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-        lane_hit_locked[lane] = false;
+        lane_state[lane] = LANE_IDLE;
+        lane_sustain[lane] = 0;
+        reset_lane_visual((uint8_t)lane);
     }
 
     key_init_keys();
     key_draw_all();
 
     note_init_notes();
-}
-
-//static void process_note_hits(uint32_t presses)
-//{
-//    for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-//
-//        /*
-//         * Unlock the lane only once there are no hittable notes left
-//         * in that lane. This prevents rapid repeated key presses from
-//         * scoring multiple notes stacked in the same hit window.
-//         */
-//        if (!note_lane_hit_check(lane)) {
-//            lane_hit_locked[lane] = false;
-//        }
-//
-//        if (!(presses & lane_masks[lane])) {
-//            continue;
-//        }
-//
-//        if (lane_hit_locked[lane]) {
-//            continue;
-//        }
-//
-//        if (note_process_hit(lane)) {
-//            lane_hit_locked[lane] = true;
-//
-//            score_register_hit();
-//
-//            lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
-//            audio_set_voice(lane_voices[lane], 1);
-//        } else {
-//            score_register_miss();
-//        }
-//    }
-//}
-
-/* ---------------------------------------------------------------------------
- * Per-lane FSM state
- * ---------------------------------------------------------------------------
- * LANE_IDLE          – no active hit; lane is ready to accept a new press.
- * LANE_HIT_DETECTED  – a hit was registered this press; lane is locked until
- *                      the button is released (press bit clears for this lane).
- * ---------------------------------------------------------------------------
- */
-typedef enum {
-    LANE_IDLE,
-    LANE_HIT_DETECTED,
-} LaneState;
-
-static LaneState lane_state[NUMBER_INPUT_LANES];
-
-static void process_note_hits(uint32_t presses) {
-    for (uint8_t lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
-
-        bool button_pressed = (presses & lane_masks[lane]) != 0;
-
-        switch (lane_state[lane]) {
-        case LANE_IDLE:
-            if (!button_pressed) {
-                break;
-            }
-            
-            if (note_process_hit(lane)) {
-                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_SOLID, VGA_SPRITE_32x32, VGA_GREEN);
-                lane_state[lane] = LANE_HIT_DETECTED;
-                score_register_hit();
-                lane_sustain[lane] = AUDIO_SUSTAIN_TICKS;
-                audio_set_voice(lane_voices[lane], 1);
-            } else {
-                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_SOLID, VGA_SPRITE_32x32, VGA_RED);
-                score_register_miss();
-            }
-            break;
-
-        case LANE_HIT_DETECTED:
-            if (button_pressed) {
-                break;
-            }
-
-            if (!button_pressed) {
-                key_update_sprite(lane, SPRITE_FORM_CHORD_CIRCLE_HOLLOW, VGA_SPRITE_32x32, lane_color_palette[lane]);
-            }
-            break;
-        default:
-            /* Unreachable – reset to safe state. */
-            lane_state[lane] = LANE_IDLE;
-            break;
-        }
-    }
 }
 
 static void start_screen_update(void)

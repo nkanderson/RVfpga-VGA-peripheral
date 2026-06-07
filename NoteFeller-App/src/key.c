@@ -11,6 +11,8 @@
 
 #include "key.h"
 
+Key keys[NUMBER_INPUT_LANES];
+
 void key_init(Key* key, uint32_t button_mask, uint8_t audio_voice, Sprite sprite)
 {
     key->button      = button_mask;
@@ -81,7 +83,11 @@ bool key_try_hit(Key* key, uint32_t input_edges)
     return false;
 }
 
-void key_update_sprite(uint8_t key_index, uint8_t new_sprite_id, uint8_t new_sprite_type, uint16_t new_color) {
+void key_update_sprite(uint8_t key_index,
+                       uint8_t new_sprite_id,
+                       uint8_t new_sprite_type,
+                       uint16_t new_color)
+{
     keys[key_index].sprite.color       = new_color;
     keys[key_index].sprite.sprite_id   = new_sprite_id;
     keys[key_index].sprite.sprite_type = new_sprite_type;
