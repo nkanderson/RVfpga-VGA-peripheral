@@ -21,6 +21,7 @@
 #include "score.h"
 #include "seven_segment.h"
 #include "vga_sprite.h"
+#include "menu.h"
 
 #define INDEX_X 0
 #define INDEX_MULTIPLIER 1
@@ -146,4 +147,5 @@ void score_update_display(void) {
     score_sprite_multiplier_decode();
     vga_set_sprite(&score_state.sprite[INDEX_X]);
     vga_set_sprite(&score_state.sprite[INDEX_MULTIPLIER]);
+    menu_draw_score();
 }

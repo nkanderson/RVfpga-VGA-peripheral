@@ -228,8 +228,6 @@ static void playing_update(void)
 
     process_note_hits(presses);
 
-    menu_draw_score();
-
     if (presses & INPUT_LANE_4) {
         audio_silence();
         menu_end_screen();
