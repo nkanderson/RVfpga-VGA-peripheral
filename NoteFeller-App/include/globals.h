@@ -20,7 +20,9 @@
 // Each lane is KEY_LANE_W pixels wide, so lane i starts at KEY_LANE_START + i * KEY_LANE_W.
 // KEY_Y is the fixed y position of all key sprites (hit zone row).
 #define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
-#define MAX_NOTES_IN_GAME 24       // Maximum number of notes that can be active at once
+#define MAX_NOTES_IN_GAME 24          // Maximum number of notes that can be active at once
+
+#define NUMBER_COMBO_SPRITES 3
 
 #define SCREEN_W       640
 #define SCREEN_H       480
@@ -40,6 +42,7 @@ static const uint16_t lane_locations[4] = {
 // SPRITE OFFSETS
 #define KEY_SPRITE_OFFSET  0                  // Offset for sprite register indices
 #define NOTE_SPRITE_OFFSET NUMBER_INPUT_LANES // Offset for note sprite register indices
+#define COMBO_SPRITE_OFFSET (MAX_NOTES_IN_GAME + NOTE_SPRITE_OFFSET)// Offset for combo sprite register indices
 
 
 static const uint16_t lane_color_palette[NUMBER_INPUT_LANES] = {

@@ -20,6 +20,7 @@
 
 #include "score.h"
 #include "seven_segment.h"
+#include "vga_sprite.h"
 
 static ScoreState score_state;
 
@@ -51,7 +52,26 @@ void score_reset(void)
     score_state.value = 0;
     score_state.combo = 0;
     score_state.multiplier = 1;
+    for (int i = 0; i < NUMBER_COMBO_SPRITES; i++) {
+        score_state.sprite[i].reg = i + COMBO_SPRITE_OFFSET; // Example sprite register assignment
+        score_state.sprite[i].color = VGA_COLOR(15, 15, 0); // Example color (yellow)
 
+    }
+    //BORDER
+    score_state.sprite[0].sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID; // Example sprite form
+    score_state.sprite[0].sprite_type = VGA_SPRITE_32x32; // Example sprite type
+    score_state.sprite[0].pos_x       = 50; // Example position
+    score_state.sprite[0].pos_y       = 40;
+    //X
+    score_state.sprite[1].sprite_id   = SPRITE_FORM_X; // Example sprite form
+    score_state.sprite[1].sprite_type = VGA_SPRITE_16x16; // Example sprite type
+    score_state.sprite[1].pos_x       = 52; // Example position
+    score_state.sprite[1].pos_y       = 40;
+    //NUMBER
+    score_state.sprite[2].sprite_id   = score_state.multiplier; // Example sprite form
+    score_state.sprite[2].sprite_type = VGA_SPRITE_16x16; // Example sprite type
+    score_state.sprite[2].pos_x       = 68; // Example position
+    score_state.sprite[2].pos_y       = 40;
     score_update_display();
 }
 
@@ -104,7 +124,30 @@ const ScoreState* score_get_state(void)
     return &score_state;
 }
 
-void score_update_display(void)
-{
+void score_sprite_multiplier_decode(void) {
+    switch (score_state.multiplier) {
+        case 1:
+            score_state.sprite[2].sprite_id = SPRITE_FORM_1;
+            break;
+        case 2:
+            score_state.sprite[2].sprite_id = SPRITE_FORM_2;
+            break;
+        case 3:
+            score_state.sprite[2].sprite_id = SPRITE_FORM_3;
+            break;
+        case 4:
+            score_state.sprite[2].sprite_id = SPRITE_FORM_4 ;
+            break;
+        // Add more cases as needed
+        default:
+            score_state.sprite[2].sprite_id = SPRITE_FORM_1;
+            break;
+    }
+}
+
+void score_update_display(void) {
     sevenseg_display_score(score_state.value);
+    score_sprite_multiplier_decode();
+    vga_set_sprite(&score_state.sprite[2]);
+    
 }

@@ -1,8 +1,7 @@
 #ifndef SCORE_H
 #define SCORE_H
 #include <stdint.h>
-
-#include <stdint.h>
+#include "globals.h"
 
 #define SCORE_POINTS_PER_HIT 100
 #define SCORE_COMBO_MAX      9999
@@ -11,6 +10,7 @@ typedef struct {
     uint32_t value;
     uint32_t combo;
     uint32_t multiplier;
+    Sprite   sprite[NUMBER_COMBO_SPRITES];
 } ScoreState;
 
 void score_init(void);

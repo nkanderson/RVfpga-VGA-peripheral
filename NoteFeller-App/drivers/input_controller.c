@@ -43,7 +43,7 @@
 
 void input_init(void)
 {
-    input_set_mode(INPUT_MODE_USB);
+    input_set_mode(INPUT_MODE_BUTTONS);
     input_clear_all_edges();
 }
 
