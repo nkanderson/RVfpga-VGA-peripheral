@@ -191,39 +191,68 @@ static uint8_t note_count_active_in_lane(int lane)
 // AI Assisted code generation
 void note_spawn_routine(void)
 {
-    static uint32_t call_counter = 0;
+    static uint32_t chord_counter = 0;
+    static uint32_t note_counter  = 0;
 
-    call_counter++;
-    if (call_counter < SPAWN_THRESHOLD) {
+    chord_counter++;
+    note_counter++;
+
+    bool chord_fires = chord_counter >= SPAWN_THRESHOLD;
+    bool note_fires  = note_counter  >= (SPAWN_THRESHOLD / 2);
+
+    if (!chord_fires && !note_fires) {
         return;
     }
-    call_counter = 0;
 
-    bool lane_used[NUMBER_INPUT_LANES] = {false};
-    int notes_to_spawn = 1 + (rand() % MAX_NOTES_PER_WAVE);
+    if (chord_fires) {
+        chord_counter = 0;
+        note_counter  = 0;    // Reset note counter so it stays in sync with chord halfway point
 
-    for (int n = 0; n < notes_to_spawn; n++) {
+        bool lane_used[NUMBER_INPUT_LANES] = {false};
+        int notes_to_spawn = 1 + (rand() % MAX_NOTES_PER_WAVE);
+
+        for (int n = 0; n < notes_to_spawn; n++) {
+            int lane = rand() % NUMBER_INPUT_LANES;
+
+            if (lane_used[lane] || note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
+                continue;
+            }
+
+            lane_used[lane] = true;
+
+            for (int i = 0; i < NOTES_PER_LANE; i++) {
+                Note *note = &notes[lane][i];
+
+                if (!note->active) {
+                    note->active       = 1;
+                    note->hittable     = 0;
+                    note->y            = 0;
+                    note->tick_ctr     = 0;
+                    note->sprite.pos_y = 0;
+                    vga_set_sprite(&note->sprite);
+                    break;
+                }
+            }
+        }
+    } else {
+        // note_fires only — spawn a single note on a random eligible lane.
+        note_counter = 0;
+
         int lane = rand() % NUMBER_INPUT_LANES;
 
-        // Skip if this lane already received a note this wave, or is full.
-        if (lane_used[lane] || note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
-            continue;
-        }
+        if (note_count_active_in_lane(lane) < NOTES_PER_LANE) {
+            for (int i = 0; i < NOTES_PER_LANE; i++) {
+                Note *note = &notes[lane][i];
 
-        lane_used[lane] = true;
-
-        // Activate the first free slot in the chosen lane.
-        for (int i = 0; i < NOTES_PER_LANE; i++) {
-            Note *note = &notes[lane][i];
-
-            if (!note->active) {
-                note->active       = 1;
-                note->hittable     = 0;
-                note->y            = 0;
-                note->tick_ctr     = 0;
-                note->sprite.pos_y = 0;
-                vga_set_sprite(&note->sprite);
-                break;
+                if (!note->active) {
+                    note->active       = 1;
+                    note->hittable     = 0;
+                    note->y            = 0;
+                    note->tick_ctr     = 0;
+                    note->sprite.pos_y = 0;
+                    vga_set_sprite(&note->sprite);
+                    break;
+                }
             }
         }
     }
