@@ -23,6 +23,23 @@
 
 static ScoreState score_state;
 
+static uint32_t score_calculate_multiplier(uint32_t combo)
+{
+    if (combo >= 30) {
+        return 4;
+    }
+
+    if (combo >= 20) {
+        return 3;
+    }
+
+    if (combo >= 10) {
+        return 2;
+    }
+
+    return 1;
+}
+
 void score_init(void)
 {
     sevenseg_init();
@@ -44,9 +61,9 @@ void score_register_hit(void)
         score_state.combo++;
     }
 
-    score_state.value += SCORE_POINTS_PER_HIT *
-                         score_state.combo *
-                         score_state.multiplier;
+    score_state.multiplier = score_calculate_multiplier(score_state.combo);
+
+    score_state.value += SCORE_POINTS_PER_HIT * score_state.multiplier;
 
     score_update_display();
 }
@@ -54,6 +71,7 @@ void score_register_hit(void)
 void score_register_miss(void)
 {
     score_state.combo = 0;
+    score_state.multiplier = 1;
     score_update_display();
 }
 

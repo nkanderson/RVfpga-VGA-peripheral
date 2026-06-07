@@ -98,21 +98,12 @@ bool note_complete(uint16_t y, uint8_t sprite_height) {
 // row enters the hit box and until its center row exits the bottom.
 bool note_hittable_check(uint16_t y, uint8_t sprite_height)
 {
-    uint16_t note_top    = y;
-    uint16_t note_bottom = y + sprite_height;
+    uint16_t note_center = y + (sprite_height / 2);
 
-    uint16_t hit_top;
-    uint16_t hit_bottom;
+    uint16_t hit_top    = KEY_Y;
+    uint16_t hit_bottom = KEY_Y + KEY_SPRITE_H;
 
-    if (KEY_Y > HIT_WINDOW_PAD_TOP) {
-        hit_top = KEY_Y - HIT_WINDOW_PAD_TOP;
-    } else {
-        hit_top = 0;
-    }
-
-    hit_bottom = KEY_Y + KEY_SPRITE_H + HIT_WINDOW_PAD_BOTTOM;
-
-    return (note_bottom >= hit_top) && (note_top <= hit_bottom);
+    return (note_center >= hit_top) && (note_center <= hit_bottom);
 }
 
 // Updates every note across all lanes.
