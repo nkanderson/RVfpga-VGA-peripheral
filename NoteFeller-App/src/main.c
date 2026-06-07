@@ -30,8 +30,6 @@ typedef enum {
     GAME_STATE_END
 } GameState;
 
-#define DIFFICULTY_STEP_TICKS 60000u
-
 /*
  * Per-lane input state.
  *
@@ -47,7 +45,6 @@ typedef enum {
     LANE_HIT_DETECTED
 } LaneState;
 
-#define GAME_LOOP_DELAY       50000u
 #define AUDIO_DEFAULT_VOLUME  8u
 #define AUDIO_SUSTAIN_TICKS   5000u
 
@@ -71,18 +68,9 @@ static LaneState lane_state[NUMBER_INPUT_LANES] = {
     LANE_IDLE, LANE_IDLE, LANE_IDLE, LANE_IDLE
 };
 
-static uint32_t difficulty_timer = 0;
-
 static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {
     0, 0, 0, 0
 };
-
-static void delay(volatile uint32_t count)
-{
-    while (count--) {
-        __asm__ volatile ("nop");
-    }
-}
 
 static void reset_lane_visual(uint8_t lane)
 {
@@ -187,8 +175,6 @@ static void reset_gameplay(void)
     score_reset();
     audio_silence();
     input_clear_all_edges();
-    difficulty_timer = 0;
-    note_reset_difficulty();
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
         lane_state[lane] = LANE_IDLE;
@@ -222,13 +208,6 @@ static void playing_update(void)
 
     if (missed_notes != 0) {
         score_register_miss();
-    }
-
-    difficulty_timer++;
-
-    if (difficulty_timer >= DIFFICULTY_STEP_TICKS) {
-        difficulty_timer = 0;
-        note_increase_difficulty();
     }
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {

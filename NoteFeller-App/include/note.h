@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Engineer:    Jacob Burtenshaw
+// Engineer:    Jacob Burtenshaw & Chris Kane-Pardy
 // Create Date: 29/05/2026
 // File Name:   note.h
 // Project Name: Note Feller
@@ -40,10 +40,6 @@ void note_spawn_routine(void);
 // Updates all active notes.
 // Returns a lane bitmask indicating which lanes had notes missed.
 uint32_t note_movement_routine(void);
-
-// Difficulty control.
-void note_reset_difficulty(void);
-void note_increase_difficulty(void);
 
 // Returns true if any note in the given lane is active and hittable.
 bool note_lane_hit_check(int lane);
