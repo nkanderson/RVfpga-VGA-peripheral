@@ -45,7 +45,6 @@ typedef enum {
     LANE_HIT_DETECTED
 } LaneState;
 
-#define GAME_LOOP_DELAY       50000u
 #define AUDIO_DEFAULT_VOLUME  8u
 #define AUDIO_SUSTAIN_TICKS   5000u
 
@@ -72,13 +71,6 @@ static LaneState lane_state[NUMBER_INPUT_LANES] = {
 static uint32_t lane_sustain[NUMBER_INPUT_LANES] = {
     0, 0, 0, 0
 };
-
-static void delay(volatile uint32_t count)
-{
-    while (count--) {
-        __asm__ volatile ("nop");
-    }
-}
 
 static void reset_lane_visual(uint8_t lane)
 {
