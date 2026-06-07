@@ -22,6 +22,7 @@
 #include "vga_sprite.h"
 #include "note.h"
 #include "key.h"
+#include "menu.h"
 
 typedef enum {
     GAME_STATE_START = 0,
@@ -173,10 +174,12 @@ static void system_init(void)
     note_init_notes();
 
     game_state = GAME_STATE_START;
+    menu_start_screen();
 }
 
 static void reset_gameplay(void)
 {
+    vga_clear_all_sprites();
     score_reset();
     audio_silence();
     input_clear_all_edges();
@@ -227,6 +230,7 @@ static void playing_update(void)
 
     if (presses & INPUT_LANE_4) {
         audio_silence();
+        menu_end_screen();
         game_state = GAME_STATE_END;
     }
 }
@@ -238,7 +242,8 @@ static void end_screen_update(void)
     uint32_t presses = input_poll_new_presses();
 
     if (presses & INPUT_LANE_4) {
-        game_state = GAME_STATE_START;
+        reset_gameplay();
+        game_state = GAME_STATE_PLAYING;
     }
 }
 
