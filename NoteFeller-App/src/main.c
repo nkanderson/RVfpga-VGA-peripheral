@@ -264,8 +264,6 @@ int main(void)
                 game_state = GAME_STATE_START;
                 break;
         }
-
-        //delay(GAME_LOOP_DELAY);
     }
 
     return 0;

@@ -12,15 +12,15 @@
 
 #include <stdint.h>
 #include "vga_sprite.h"        // For Sprite struct and VGA_COLOR macro
-#include "audio.h"            // For audio control (AUDIO_VOICE_*)
-#include "input_controller.h" // For input button masks (INPUT_LANE_*)
+#include "audio.h"             // For audio control (AUDIO_VOICE_*)
+#include "input_controller.h"  // For input button masks (INPUT_LANE_*)
 
 // Key lane layout: lanes are centered as a group on the 640px screen.
 // KEY_LANE_START is the x pixel of the left edge of lane 0.
 // Each lane is KEY_LANE_W pixels wide, so lane i starts at KEY_LANE_START + i * KEY_LANE_W.
 // KEY_Y is the fixed y position of all key sprites (hit zone row).
 #define NUMBER_INPUT_LANES 4       // Total number of input lanes (buttons)
-#define MAX_NOTES_IN_GAME 12          // Maximum number of notes that can be active at once
+#define MAX_NOTES_IN_GAME 24       // Maximum number of notes that can be active at once
 
 #define SCREEN_W       640
 #define SCREEN_H       480
