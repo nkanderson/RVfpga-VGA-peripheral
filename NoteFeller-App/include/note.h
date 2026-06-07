@@ -41,9 +41,6 @@ void note_spawn_routine(void);
 // Returns a lane bitmask indicating which lanes had notes missed.
 uint32_t note_movement_routine(void);
 
-// Returns true if any note in the given lane is active and hittable.
-bool note_lane_hit_check(int lane);
-
 // Deactivates the first hittable note in the lane.
 bool note_process_hit(int lane);
 
