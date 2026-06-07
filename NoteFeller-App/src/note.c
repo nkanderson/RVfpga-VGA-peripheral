@@ -29,7 +29,7 @@
 #define TICK_THRESHOLD 500u
 #define INCREMENT_Y    3u
 
-#define SPAWN_THRESHOLD 60000
+#define SPAWN_THRESHOLD 30000
 #define MAX_NOTES_PER_WAVE 4
 
 #define MAX_ACTIVE_PER_LANE NOTES_PER_LANE
@@ -188,7 +188,9 @@ static uint8_t note_count_active_in_lane(int lane)
 // rand() determines how many notes to spawn (1 to MAX_NOTES_PER_WAVE).
 // Each note is assigned a random lane; if that lane is full the note is
 // skipped. The counter resets regardless.
-void note_spawn_routine(void) {
+// AI Assisted code generation
+void note_spawn_routine(void)
+{
     static uint32_t call_counter = 0;
 
     call_counter++;
@@ -197,14 +199,18 @@ void note_spawn_routine(void) {
     }
     call_counter = 0;
 
+    bool lane_used[NUMBER_INPUT_LANES] = {false};
     int notes_to_spawn = 1 + (rand() % MAX_NOTES_PER_WAVE);
+
     for (int n = 0; n < notes_to_spawn; n++) {
         int lane = rand() % NUMBER_INPUT_LANES;
 
-        // If the lane is full, skip this note.
-        if (note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
+        // Skip if this lane already received a note this wave, or is full.
+        if (lane_used[lane] || note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
             continue;
         }
+
+        lane_used[lane] = true;
 
         // Activate the first free slot in the chosen lane.
         for (int i = 0; i < NOTES_PER_LANE; i++) {
