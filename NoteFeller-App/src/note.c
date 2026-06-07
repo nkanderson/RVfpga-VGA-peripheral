@@ -116,12 +116,17 @@ bool note_hittable_check(uint16_t y, uint8_t sprite_height)
 }
 
 // Updates every note across all lanes.
-void note_movement_routine(void) {
+uint32_t note_movement_routine(void)
+{
+    uint32_t missed_mask = 0;
+
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
         for (int i = 0; i < NOTES_PER_LANE; i++) {
             Note *note = &notes[lane][i];
 
-            if (!note->active) { continue; }
+            if (!note->active) {
+                continue;
+            }
 
             if (note->tick_ctr < TICK_THRESHOLD) {
                 note->tick_ctr++;
@@ -139,9 +144,13 @@ void note_movement_routine(void) {
                 note->active   = 0;
                 note->hittable = 0;
                 vga_clear_sprite(note->sprite.reg);
+
+                missed_mask |= (1u << lane);
             }
         }
     }
+
+    return missed_mask;
 }
 
 // Returns true if any note in the given lane is active and within the hit zone.

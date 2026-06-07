@@ -95,7 +95,7 @@ static void set_lane_hit_visual(uint8_t lane)
         lane,
         SPRITE_FORM_CHORD_CIRCLE_SOLID,
         VGA_SPRITE_32x32,
-        VGA_GREEN
+        lane_color_palette[lane]
     );
 }
 
@@ -105,7 +105,7 @@ static void set_lane_miss_visual(uint8_t lane)
         lane,
         SPRITE_FORM_CHORD_CIRCLE_SOLID,
         VGA_SPRITE_32x32,
-        VGA_RED
+        VGA_BLACK
     );
 }
 
@@ -208,7 +208,12 @@ static void playing_update(void)
     uint32_t presses = input_poll_new_presses();
 
     note_spawn_routine();
-    note_movement_routine();
+
+    uint32_t missed_notes = note_movement_routine();
+
+    if (missed_notes != 0) {
+        score_register_miss();
+    }
 
     for (int lane = 0; lane < NUMBER_INPUT_LANES; lane++) {
         if (lane_sustain[lane] > 0) {
