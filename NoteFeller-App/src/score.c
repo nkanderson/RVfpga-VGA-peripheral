@@ -22,6 +22,9 @@
 #include "seven_segment.h"
 #include "vga_sprite.h"
 
+#define INDEX_X 0
+#define INDEX_MULTIPLIER 1
+
 static ScoreState score_state;
 
 static uint32_t score_calculate_multiplier(uint32_t combo)
@@ -53,25 +56,19 @@ void score_reset(void)
     score_state.combo = 0;
     score_state.multiplier = 1;
     for (int i = 0; i < NUMBER_COMBO_SPRITES; i++) {
-        score_state.sprite[i].reg = i + COMBO_SPRITE_OFFSET; // Example sprite register assignment
-        score_state.sprite[i].color = VGA_COLOR(15, 15, 0); // Example color (yellow)
-
+        score_state.sprite[i].reg   = i + COMBO_SPRITE_OFFSET; // Example sprite register assignment
+        score_state.sprite[i].color = VGA_BLACK; // Example color (yellow)
+        score_state.sprite[i].pos_y  = 450;
     }
-    //BORDER
-    score_state.sprite[0].sprite_id   = SPRITE_FORM_CHORD_CIRCLE_SOLID; // Example sprite form
-    score_state.sprite[0].sprite_type = VGA_SPRITE_32x32; // Example sprite type
-    score_state.sprite[0].pos_x       = 50; // Example position
-    score_state.sprite[0].pos_y       = 40;
     //X
-    score_state.sprite[1].sprite_id   = SPRITE_FORM_X; // Example sprite form
-    score_state.sprite[1].sprite_type = VGA_SPRITE_16x16; // Example sprite type
-    score_state.sprite[1].pos_x       = 52; // Example position
-    score_state.sprite[1].pos_y       = 40;
+    score_state.sprite[INDEX_X].sprite_id   = SPRITE_FORM_X; // Example sprite form
+    score_state.sprite[INDEX_X].sprite_type = VGA_SPRITE_16x16; // Example sprite type
+    score_state.sprite[INDEX_X].pos_x       = 310; // Example position
+
     //NUMBER
-    score_state.sprite[2].sprite_id   = score_state.multiplier; // Example sprite form
-    score_state.sprite[2].sprite_type = VGA_SPRITE_16x16; // Example sprite type
-    score_state.sprite[2].pos_x       = 68; // Example position
-    score_state.sprite[2].pos_y       = 40;
+    score_state.sprite[INDEX_MULTIPLIER].sprite_id   = SPRITE_FORM_1; // Example sprite form
+    score_state.sprite[INDEX_MULTIPLIER].sprite_type = VGA_SPRITE_16x16; // Example sprite type
+    score_state.sprite[INDEX_MULTIPLIER].pos_x       = 320; // Example position
     score_update_display();
 }
 
@@ -127,20 +124,19 @@ const ScoreState* score_get_state(void)
 void score_sprite_multiplier_decode(void) {
     switch (score_state.multiplier) {
         case 1:
-            score_state.sprite[2].sprite_id = SPRITE_FORM_1;
+            score_state.sprite[INDEX_MULTIPLIER].sprite_id = SPRITE_FORM_1;
             break;
         case 2:
-            score_state.sprite[2].sprite_id = SPRITE_FORM_2;
+            score_state.sprite[INDEX_MULTIPLIER].sprite_id = SPRITE_FORM_2;
             break;
         case 3:
-            score_state.sprite[2].sprite_id = SPRITE_FORM_3;
+            score_state.sprite[INDEX_MULTIPLIER].sprite_id = SPRITE_FORM_3;
             break;
         case 4:
-            score_state.sprite[2].sprite_id = SPRITE_FORM_4 ;
+            score_state.sprite[INDEX_MULTIPLIER].sprite_id = SPRITE_FORM_4 ;
             break;
-        // Add more cases as needed
         default:
-            score_state.sprite[2].sprite_id = SPRITE_FORM_1;
+            score_state.sprite[INDEX_MULTIPLIER].sprite_id = SPRITE_FORM_1;
             break;
     }
 }
@@ -148,6 +144,6 @@ void score_sprite_multiplier_decode(void) {
 void score_update_display(void) {
     sevenseg_display_score(score_state.value);
     score_sprite_multiplier_decode();
-    vga_set_sprite(&score_state.sprite[2]);
-    
+    vga_set_sprite(&score_state.sprite[INDEX_X]);
+    vga_set_sprite(&score_state.sprite[INDEX_MULTIPLIER]);
 }
