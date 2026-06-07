@@ -15,11 +15,6 @@
 #include "audio.h"            // For audio control (AUDIO_VOICE_*)
 #include "input_controller.h" // For input button masks (INPUT_LANE_*)
 
-// --- Game Constants ---
-#define NOTE_SPEED      500000  // Delay between LED updates (higher = slower)
-#define HIT_LED_DURATION 300000 // Duration for hit LED blink
-#define MAX_LED_POSITION 10     // Note resets after reaching this LED
-
 // Key lane layout: lanes are centered as a group on the 640px screen.
 // KEY_LANE_START is the x pixel of the left edge of lane 0.
 // Each lane is KEY_LANE_W pixels wide, so lane i starts at KEY_LANE_START + i * KEY_LANE_W.
@@ -53,10 +48,5 @@ static const uint16_t lane_color_palette[NUMBER_INPUT_LANES] = {
     VGA_BLUE,     // Lane 2
     VGA_YELLOW,   // Lane 3
 };
-
-// --- Game State (Declarations Only) ---
-extern int game_started;       // 1 if the game is running, 0 otherwise
-extern int note_position;      // Current LED position of the note (0-10)
-extern int note_active;        // 1 if a note is active, 0 otherwise
 
 #endif // GLOBALS_H
