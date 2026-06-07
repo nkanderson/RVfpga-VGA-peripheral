@@ -37,7 +37,7 @@ void note_init_notes(void);
 void note_spawn_routine(void);
 
 // Updates the position of all notes across all lanes.
-void note_movement_routine(void);
+uint32_t note_movement_routine(void);
 
 // Returns true if any note in the given lane is active and within the hit zone.
 bool note_lane_hit_check(int lane);
