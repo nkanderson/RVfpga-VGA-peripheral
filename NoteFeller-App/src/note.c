@@ -19,7 +19,6 @@
 
 #define SPRITE_BIG 32
 
-
 // -----------------------------------------------------------------------------
 // Fixed note timing
 // -----------------------------------------------------------------------------
@@ -29,7 +28,7 @@
 #define TICK_THRESHOLD 500u
 #define INCREMENT_Y    3u
 
-#define SPAWN_THRESHOLD 30000
+#define SPAWN_THRESHOLD 20000
 #define MAX_CHORD_PER_WAVE 4
 #define MAX_NOTES_PER_WAVE 2
 
