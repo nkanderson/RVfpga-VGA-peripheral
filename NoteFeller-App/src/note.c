@@ -29,8 +29,9 @@
 #define TICK_THRESHOLD 500u
 #define INCREMENT_Y    3u
 
-#define SPAWN_THRESHOLD 20000
-#define MAX_NOTES_PER_WAVE 4
+#define SPAWN_THRESHOLD 30000
+#define MAX_CHORD_PER_WAVE 4
+#define MAX_NOTES_PER_WAVE 2
 
 #define MAX_ACTIVE_PER_LANE NOTES_PER_LANE
 
@@ -189,6 +190,48 @@ static uint8_t note_count_active_in_lane(int lane)
 // Each note is assigned a random lane; if that lane is full the note is
 // skipped. The counter resets regardless.
 // AI Assisted code generation
+// Attempts to activate the first free slot in the given lane.
+// Returns true if a note was successfully spawned, false if the lane was full.
+static bool spawn_note_in_lane(int lane)
+{
+    if (note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
+        return false;
+    }
+
+    for (int i = 0; i < NOTES_PER_LANE; i++) {
+        Note *note = &notes[lane][i];
+
+        if (!note->active) {
+            note->active       = 1;
+            note->hittable     = 0;
+            note->y            = 0;
+            note->tick_ctr     = 0;
+            note->sprite.pos_y = 0;
+            vga_set_sprite(&note->sprite);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Spawns up to notes_to_spawn notes on random distinct eligible lanes.
+static void spawn_wave(int notes_to_spawn)
+{
+    bool lane_used[NUMBER_INPUT_LANES] = {false};
+
+    for (int n = 0; n < notes_to_spawn; n++) {
+        int lane = rand() % NUMBER_INPUT_LANES;
+
+        if (lane_used[lane]) {
+            continue;
+        }
+
+        lane_used[lane] = true;
+        spawn_note_in_lane(lane);
+    }
+}
+
 void note_spawn_routine(void)
 {
     static uint32_t chord_counter = 0;
@@ -206,54 +249,10 @@ void note_spawn_routine(void)
 
     if (chord_fires) {
         chord_counter = 0;
-        note_counter  = 0;    // Reset note counter so it stays in sync with chord halfway point
-
-        bool lane_used[NUMBER_INPUT_LANES] = {false};
-        int notes_to_spawn = 1 + (rand() % MAX_NOTES_PER_WAVE);
-
-        for (int n = 0; n < notes_to_spawn; n++) {
-            int lane = rand() % NUMBER_INPUT_LANES;
-
-            if (lane_used[lane] || note_count_active_in_lane(lane) >= NOTES_PER_LANE) {
-                continue;
-            }
-
-            lane_used[lane] = true;
-
-            for (int i = 0; i < NOTES_PER_LANE; i++) {
-                Note *note = &notes[lane][i];
-
-                if (!note->active) {
-                    note->active       = 1;
-                    note->hittable     = 0;
-                    note->y            = 0;
-                    note->tick_ctr     = 0;
-                    note->sprite.pos_y = 0;
-                    vga_set_sprite(&note->sprite);
-                    break;
-                }
-            }
-        }
+        note_counter  = 0;
+        spawn_wave(rand() % (MAX_CHORD_PER_WAVE+1));     // 0, 1, 2, 3, or 4
     } else {
-        // note_fires only — spawn a single note on a random eligible lane.
         note_counter = 0;
-
-        int lane = rand() % NUMBER_INPUT_LANES;
-
-        if (note_count_active_in_lane(lane) < NOTES_PER_LANE) {
-            for (int i = 0; i < NOTES_PER_LANE; i++) {
-                Note *note = &notes[lane][i];
-
-                if (!note->active) {
-                    note->active       = 1;
-                    note->hittable     = 0;
-                    note->y            = 0;
-                    note->tick_ctr     = 0;
-                    note->sprite.pos_y = 0;
-                    vga_set_sprite(&note->sprite);
-                    break;
-                }
-            }
-        }
+        spawn_wave(rand() % (MAX_NOTES_PER_WAVE+1));     // 0, 1, or 2
     }
 }
