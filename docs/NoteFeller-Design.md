@@ -363,3 +363,11 @@ and a tiered combo-scoring system on top. The design's recurring theme is
 trading ideal-but-costly approaches (frame buffer, multi-bit DAC) for
 resource-efficient FPGA-friendly ones (sprite engine, sigma-delta), delivering
 a responsive, musical game within the platform's BRAM and I/O constraints.
+
+## 9. LLM Acknowledgement
+
+Parts of our codebase and documentation were generated with the assistance of
+large language models. These sections of code contain in-text citations and LLM
+acknowledgements. All code and documentation was reviewed and edited by the
+authors to ensure correctness and functionality, as well as conformance to the
+specifications provided to the LLM.
