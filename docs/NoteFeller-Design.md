@@ -207,43 +207,52 @@ game modules (keys, notes, menu, score) build entirely on this API.
 
 ### 5.1 `wb_input_controller`
 
-The input controller exposes player input as memory-mapped registers and adds
-two features the raw GPIO lacks:
+The input controller converts asynchronous user inputs into a CPU-friendly, memory-mapped interface for gameplay. Rather than exposing raw button or keyboard signals directly to software, the peripheral presents both the current input state and a set of latched press events through Wishbone registers.
 
-- **Edge detection.** Physical buttons are first passed through a two-flop
-  synchronizer; a rising edge (`current & ~previous`) sets a *latched* event
-  bit. This separates a freshly pressed key from one being held — essential for
-  rhythm scoring — and lets software poll at its own pace without missing
-  presses. Edge bits are write-1-to-clear.
-- **Selectable input source.** An input-mode register chooses between the
-  onboard pushbuttons and the PS-2/USB keyboard, so the same five gameplay
-  signals (four lanes + Enter) can be driven by either device. This was
-  invaluable during development and debugging.
+For onboard pushbuttons, the controller first synchronizes the asynchronous button signals into the system clock domain using a two-stage flip-flop synchronizer. The synchronized inputs are then compared against their previous sampled values to detect rising-edge transitions. When a new press is detected, the corresponding bit is latched in an edge-event register. These edge bits remain asserted until cleared by software, preventing short button presses from being missed even if the processor polls the peripheral at a slower rate than the hardware sampling frequency.
 
-### 5.2 `ps2_receiver`
+This distinction between **held state** and **new-press events** is critical for rhythm-game scoring. The current input state allows the software to determine whether a key is being held, while the edge register identifies the exact moment a new key press occurred. This prevents a held button from repeatedly generating hit events while still allowing the game to react immediately to new inputs.
 
-A small PS-2 receiver synchronizes the `ps2_clk` line, detects falling edges,
-and shifts in the 11-bit frame (start, 8 data LSB-first, parity, stop),
-emitting a scan-code byte plus a one-cycle valid pulse. The controller decodes
-Set-2 scan codes for A/S/D/F/Enter and tracks make/break (`0xF0`) prefixes to
-maintain per-key state.
+The peripheral also supports multiple input sources through a selectable input mode register. During development, gameplay could be controlled either by the Nexys A7 pushbuttons or by a keyboard interface while presenting the same five-bit gameplay abstraction to software. Regardless of the physical source, the controller outputs a common set of lane signals corresponding to the four gameplay lanes and the Enter/start button.
 
-### 5.3 Register map (`wb_input_controller`, base `0x80001500`)
+### 5.2 Keyboard Input Processing
 
-| Offset | Name           | Field encoding                                        |
-|--------|----------------|-------------------------------------------------------|
-| `0x00` | `INPUT_STATUS` | `[4:0]` current held inputs (4 lanes + Enter)         |
-| `0x04` | `INPUT_EDGE`   | `[4:0]` latched new presses; write 1s to clear        |
-| `0x08` | `INPUT_CTRL`   | `[0]` write 1 to clear all edge bits                  |
-| `0x0C` | `INPUT_MODE`   | `[1:0]` source select (0 = buttons, 1 = USB/keyboard) |
+Keyboard input is represented internally using the same five-bit gameplay interface as the pushbuttons. The controller receives decoded keyboard scan-code events and translates them into lane states corresponding to the A, S, D, F, and Enter keys.
 
-### 5.4 `input_controller.c` / `input_controller.h` driver
+A dedicated receiver module captures serial keyboard data by synchronizing the incoming clock signal, detecting clock falling edges, and shifting the incoming 11-bit frame into a register. After a complete frame has been received, the module outputs the received scan code along with a one-cycle valid pulse. The controller then interprets keyboard make and break sequences to maintain the current key state.
 
-The driver offers `input_get_status()` (held state), `input_get_edges()` /
-`input_clear_edges()`, `input_set_mode()`, and the convenience
-`input_poll_new_presses()` — which reads the edge register, clears the bits it
-saw, and returns them. That single call is the primary hit-detection primitive
-for the game loop.
+When a key's make code is received, the corresponding gameplay input bit is asserted. When a break sequence (`0xF0`) is followed by a key's scan code, the associated gameplay bit is cleared. This allows keyboard inputs to behave identically to held pushbuttons from the software's perspective.
+
+Current key mappings are:
+
+| Key   | Gameplay Signal |
+| ----- | --------------- |
+| A     | Lane 0          |
+| S     | Lane 1          |
+| D     | Lane 2          |
+| F     | Lane 3          |
+| Enter | Start / Menu    |
+
+This translation layer allows the game software to remain completely agnostic to the underlying input device.
+
+### 5.3 Register Map (`wb_input_controller`, base `0x80001500`)
+
+| Offset | Name           | Field Encoding                                            |
+| ------ | -------------- | --------------------------------------------------------- |
+| `0x00` | `INPUT_STATUS` | `[4:0]` current held inputs (lanes 0–3 + Enter)           |
+| `0x04` | `INPUT_EDGE`   | `[4:0]` latched rising-edge events; write 1s to clear     |
+| `0x08` | `INPUT_CTRL`   | `[0]` clear all edge-event bits                           |
+| `0x0C` | `INPUT_MODE`   | `[0]` input source select (`0 = buttons`, `1 = keyboard`) |
+
+The separation between `INPUT_STATUS` and `INPUT_EDGE` allows software to distinguish between keys that are currently held and keys that were newly pressed since the last poll. This design simplifies gameplay logic while reducing the risk of missed timing events.
+
+### 5.4 `input_controller.c` / `input_controller.h` Driver
+
+The software driver provides a small abstraction layer over the hardware register interface. Functions such as `input_get_status()` and `input_get_edges()` expose the current held-input state and latched press events without requiring the game engine to interact with raw memory-mapped addresses.
+
+The most commonly used interface is `input_poll_new_presses()`, which reads the edge-event register, clears the bits that were observed, and returns the resulting press mask. This operation effectively converts the hardware edge latches into a software event queue and serves as the primary hit-detection mechanism used by the game loop.
+
+Additional helper functions allow software to clear selected edge bits, clear all pending events, and select the active input source. Because both pushbutton and keyboard inputs are reduced to the same five-bit gameplay representation in hardware, the remainder of the game engine can operate independently of the physical input device.
 
 ## 6. Seven-Segment Display (legacy score output)
 
@@ -260,79 +269,125 @@ the VGA bigfont text (Section 4.3) is now the primary readout.
 | `0x80001038` | `SEVENSEG_ENABLES`| Per-digit enable (bit = 1 disables digit) |
 | `0x8000103C` | `SEVENSEG_DIGITS` | Eight 4-bit hex nibbles, one per digit    |
 
-## 7. Game Engine (`NoteFeller-App`)
+# 7. Game Engine (`NoteFeller-App`)
 
-### 7.1 Main loop and state machine
+## 7.1 Software Architecture
 
-`main.c` runs a three-state machine — `START`, `PLAYING`, `END` — each tick
-polling new presses via the input driver. Enter (lane 4) starts the game from
-the title screen, ends a run, and restarts from the game-over screen.
-`system_init()` initializes every driver and draws the start menu;
-`reset_gameplay()` clears sprites, resets score, and re-seeds notes between
-runs.
+The Note Feller application is implemented as a collection of modular software components running on the VeeR EL2 processor. Rather than embedding gameplay behavior inside the hardware peripherals, the hardware is used only to provide deterministic services such as video generation, audio synthesis, and input capture. All gameplay decisions are made in software.
 
-### 7.2 Lanes, keys, and notes
+The game engine is organized into several cooperating modules:
 
-The game uses four lanes, each bound to an input bit, an audio voice (C4–F4),
-a screen column (`globals.h`), and a lane color. `key.c` owns the stationary
-target sprites at the bottom of each lane; `note.c` owns a fixed pool of
-falling notes (`notes[4][6]`, 24 total). Notes move at a fixed speed driven by
-per-note tick counters (`TICK_THRESHOLD`, `INCREMENT_Y`), and are recycled when
-they fall off the bottom of the screen.
+| Module               | Responsibility                                    |
+| -------------------- | ------------------------------------------------- |
+| `main.c`             | High-level game loop and state machine            |
+| `input_controller.c` | Hardware input abstraction                        |
+| `note.c`             | Note spawning, movement, and hit detection        |
+| `key.c`              | Lane target graphics and lane-state visualization |
+| `score.c`            | Score, combo, and multiplier management           |
+| `audio.c`            | Audio peripheral control                          |
+| `menu.c`             | Start screen, HUD, and game-over display          |
+| `vga_sprite.c`       | Low-level sprite interface                        |
 
-**Sprite register budget (worked allocation of the 64 slots):**
+This separation allows gameplay features to be modified without requiring changes to the underlying hardware peripherals.
 
-| Slots   | Count | Purpose                                  |
-|---------|-------|------------------------------------------|
-| 0–3     | 4     | Lane key/target sprites (`KEY_SPRITE_OFFSET`) |
-| 4–27    | 24    | Falling notes, 6 per lane (`NOTE_SPRITE_OFFSET`) |
-| 28–29   | 2     | Combo multiplier glyphs (`COMBO_SPRITE_OFFSET`) |
-| 30+     | rest  | Menu/score text glyphs                    |
+## 7.2 Main Loop and State Machine
 
-### 7.3 Spawn cadence and pattern
+The game operates as a finite-state machine with three primary states:
 
-`note_spawn_routine()` uses two free-running counters to create spawn
-opportunities: a chord counter (fires at `SPAWN_THRESHOLD`) and a note counter
-(fires at half that). When a counter fires, `rand()` decides *how many* notes
-to drop that wave (0–4 for chords, 0–2 for single notes) and a second `rand()`
-picks *which* distinct lanes receive them, skipping any lane already full.
-`srand()` is seeded from the build timestamp (`__TIME__`) so runs vary without
-depending on a cycle-counter CSR.
+| State     | Purpose                                        |
+| --------- | ---------------------------------------------- |
+| `START`   | Display title screen and wait for player input |
+| `PLAYING` | Execute gameplay logic and update active notes |
+| `END`     | Display final score and wait for restart       |
 
-### 7.4 Hit detection and lane locking
+The main loop repeatedly executes the update routine associated with the current state. State transitions occur only in response to player input or game-completion conditions.
 
-Each tick, `process_note_hits()` combines the latched new-press edges with the
-current held state. A per-lane state (`LANE_IDLE` → `LANE_HIT_DETECTED`) acts as
-a hit-flag handshake that locks the lane after one press and only releases it
-when the key is let go — preventing a held key from repeatedly scoring or
-missing. `note_process_hit()` deactivates the first *hittable* note in the lane
-(a note is hittable when its center overlaps the target band). A hit shows a
-solid circle and plays the lane's note; a press with no hittable note flashes a
-miss color and breaks the combo.
+At startup, all peripherals and gameplay modules are initialized before entering the start-screen state. Pressing Enter transitions into gameplay, while reaching the end of a run transitions to the game-over screen. Pressing Enter again resets all gameplay state and begins a new session.
 
-### 7.5 Scoring and combo
+This approach keeps gameplay behavior deterministic and avoids deeply nested control structures.
 
-`score.c` awards `SCORE_POINTS_PER_HIT × multiplier` per hit. The combo count
-rises with consecutive hits and the multiplier steps up in tiers (≥10 → ×2,
-≥20 → ×3, ≥30 → ×4); any miss resets combo and multiplier to 1. Each update
-refreshes both the seven-segment display and the on-screen VGA text/multiplier
-glyph.
+## 7.3 Lane Abstraction
 
-### 7.6 Audio sustain
+The game is built around four independent gameplay lanes. Each lane is associated with:
 
-To make notes ring rather than click, a hit arms a per-lane **sustain
-countdown** (`AUDIO_SUSTAIN_TICKS`). The voice stays on until the counter
-expires, decoupling note duration from how briefly the key was tapped and
-producing more natural instrumentation.
+* A dedicated input bit
+* A unique screen position
+* A unique display color
+* A corresponding audio voice
 
-### 7.7 Menu and on-screen text
+This mapping allows the game engine to process all lanes using the same logic while maintaining independent visual and audio feedback.
 
-`menu.c` renders the title, prompts, and score using the bigfont glyph sprites,
-mapping each character to `sprite_id = ascii − ' '`. It draws the start screen,
-the in-game score label, and the game-over screen with a right-aligned final
-score.
+Lane configuration information is stored in shared lookup tables, allowing gameplay routines to iterate over lanes rather than implementing separate logic for each key.
 
-## 8. Key Design Decisions
+## 7.4 Note Lifecycle
+
+Each active note progresses through a simple lifecycle:
+
+1. **Spawned**
+2. **Moving**
+3. **Hittable**
+4. **Hit or Missed**
+5. **Removed**
+
+Notes are stored in a fixed-size pool organized by lane. This eliminates dynamic memory allocation and guarantees bounded memory usage throughout gameplay.
+
+When a note is activated, it is assigned a sprite register and begins moving downward at a fixed rate. As the note approaches the target region near the bottom of the screen, it becomes eligible for scoring. Once the note is either successfully hit or leaves the visible play area, it is removed and its sprite is cleared.
+
+Because the note pool is statically allocated, no memory allocation or deallocation occurs during gameplay.
+
+## 7.5 Note Movement and Timing
+
+Note movement is implemented using software timing counters rather than hardware interrupts. Each active note maintains an internal tick counter that determines when its position should be updated.
+
+When the counter exceeds a predefined threshold, the note advances by a fixed number of pixels and the associated sprite position is updated in hardware.
+
+This approach provides deterministic movement behavior while avoiding the complexity of interrupt-driven animation systems. Difficulty can be adjusted by modifying the movement increment, update threshold, spawn rate, or note density.
+
+## 7.6 Hit Detection
+
+Hit detection is performed entirely in software using the edge-latched input events provided by the input controller.
+
+When a new key press is detected, the game checks the corresponding lane for an active note currently inside the hit region. A successful match results in:
+
+* Note removal
+* Score increase
+* Combo increment
+* Audio feedback
+* Visual lane feedback
+
+If no eligible note is present when the key is pressed, the action is treated as a miss and the combo multiplier is reset.
+
+Using edge-latched inputs prevents held keys from generating repeated scoring events and allows player timing to be evaluated based on discrete press events.
+
+## 7.7 Scoring System
+
+The scoring subsystem maintains three primary values:
+
+* Score
+* Combo count
+* Score multiplier
+
+Successful hits increase both score and combo count. The multiplier increases automatically as the combo grows, rewarding sustained accuracy. Missed notes or incorrect key presses reset the combo and return the multiplier to its minimum value.
+
+The scoring module is responsible for updating both the VGA score display and the seven-segment display, providing a consistent interface for the rest of the game engine.
+
+## 7.8 Visual Feedback
+
+Visual feedback is used to communicate gameplay state to the player.
+
+Each lane target changes appearance in response to successful hits or misses. Falling notes are represented as independent sprite objects whose positions are continuously updated throughout gameplay. Additional sprite resources are used for menus, score displays, and combo indicators.
+
+Because all graphical elements are implemented using hardware sprites, the software only updates sprite descriptors rather than manipulating individual pixels. This significantly reduces processor workload while allowing smooth animation.
+
+## 7.9 Resource Allocation
+
+The game uses the 64 available hardware sprite registers to display notes, lane targets, score indicators, and menu graphics.
+
+Sprite registers are statically assigned to gameplay objects wherever possible. Menu screens and gameplay screens reuse portions of the sprite address space because they are never displayed simultaneously.
+
+This static allocation strategy simplifies sprite management and avoids runtime resource contention while ensuring all graphical objects have deterministic hardware resources available.
+
+# 8. Key Design Decisions
 
 | Decision | Reason |
 |----------|--------|
@@ -341,7 +396,7 @@ score.
 | Delta-sigma 1-bit DAC on `aud_pwm` | The board provides only a 1-bit PWM audio pin; noise-shaping yields acceptable tone quality. |
 | Sum-and-bias voice mixing | Lets eight independent voices share the single PWM output as a chord. |
 | Hardware edge detection + latched event register | Cleanly distinguishes a new press from a held key and decouples input timing from CPU poll rate. |
-| Selectable button / PS-2 input source | Either device can drive the same five gameplay signals, easing development and enabling the keyboard stretch goal. |
+| Selectable pushbutton / keyboard input source | Either device can drive the same five gameplay signals, easing development and enabling the keyboard stretch goal. |
 | Reuse the 64 B `gpio2` slot for input | Minimal interconnect change for a register set that needs little space. |
 | 4 KiB pages for audio/VGA/USB | Headroom for register-map growth (e.g., the 512 B sprite table) and future features. |
 | Unified font + sprite ROM | One ROM serves both game art and text, allowing score/menus to render on VGA. |
@@ -349,7 +404,7 @@ score.
 | Sustain countdown for note-off | Decouples audio duration from key-hold time for more realistic sound. |
 | `__TIME__`-seeded `srand` | Varies spawn patterns without depending on a cycle-counter CSR. |
 
-## 9. Summary
+# 9. Summary
 
 Note Feller demonstrates a complete hardware/software co-designed SoC on the
 Nexys A7. Three custom Wishbone peripherals carry the real-time load: a
@@ -364,10 +419,8 @@ trading ideal-but-costly approaches (frame buffer, multi-bit DAC) for
 resource-efficient FPGA-friendly ones (sprite engine, sigma-delta), delivering
 a responsive, musical game within the platform's BRAM and I/O constraints.
 
-## 9. LLM Acknowledgement
+# 10. LLM Acknowledgement
 
-Parts of our codebase and documentation were generated with the assistance of
-large language models. These sections of code contain in-text citations and LLM
-acknowledgements. All code and documentation was reviewed and edited by the
-authors to ensure correctness and functionality, as well as conformance to the
-specifications provided to the LLM.
+Portions of the software and documentation were developed with the assistance of large language models. Generated content was used primarily to accelerate development, produce initial code structures, generate documentation drafts, and assist with debugging.
+
+All generated code and documentation were reviewed, tested, and modified by the project authors prior to inclusion in the final system. The authors assume full responsibility for the correctness, functionality, and design decisions associated with the completed project.
