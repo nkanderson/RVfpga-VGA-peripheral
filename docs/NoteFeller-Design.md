@@ -85,6 +85,10 @@ implements the same minimal Wishbone handshake: a registered one-cycle
 `wb_ack_o` asserted when `wb_cyc_i & wb_stb_i` is seen, with `wb_err_o` and
 `wb_rty_o` tied low.
 
+## 2.2 Block diagram
+
+![Block diagram showing all subsystems, user interface, and associated files.](./Block%20Diagram%20Vertical.png){height=60%}
+
 # 3. Audio Subsystem
 
 ## 3.1 `wb_audio` — direct digital synthesis with delta-sigma output
