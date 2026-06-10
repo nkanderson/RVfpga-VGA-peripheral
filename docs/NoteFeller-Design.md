@@ -48,19 +48,19 @@ sprite table alone consumes 64 sprites × 2 words = 512 bytes.
 
 All peripherals live in the I/O region based at `0x80000000`.
 
-| Peripheral            | Base address  | Size   | Module                  |
-|-----------------------|---------------|--------|-------------------------|
-| Boot ROM              | `0x80000000`  | 4 KiB  | `wb_mem_wrapper`        |
-| System controller     | `0x80001000`  | 64 B   | `veerwolf_syscon` (7-seg) |
-| SPI flash             | `0x80001040`  | 64 B   | `simple_spi_top`        |
-| SPI accelerometer     | `0x80001100`  | 64 B   | `simple_spi_top`        |
-| PIT/timer (PTC)       | `0x80001200`  | 64 B   | `ptc_top`               |
-| GPIO                  | `0x80001400`  | 64 B   | `gpio_top`              |
-| **Input controller**  | `0x80001500`  | 64 B   | `wb_input_controller`   |
-| UART                  | `0x80002000`  | 4 KiB  | `uart_top`              |
-| **VGA**               | `0x80003000`  | 4 KiB  | `wb_vga`                |
-| **Audio**             | `0x80004000`  | 4 KiB  | `wb_audio`              |
-| **USB/PS-2**          | `0x80008000`  | 4 KiB  | reserved                |
+| Peripheral                 | Base address   | Size  | Module                      |
+| -------------------------- | -------------- | ----- | --------------------------- |
+| Boot ROM                   | `0x80000000`   | 4 KiB | `wb_mem_wrapper`            |
+| System controller          | `0x80001000`   | 64 B  | `veerwolf_syscon` (7-seg)   |
+| SPI flash                  | `0x80001040`   | 64 B  | `simple_spi_top`            |
+| SPI accelerometer          | `0x80001100`   | 64 B  | `simple_spi_top`            |
+| PIT/timer (PTC)            | `0x80001200`   | 64 B  | `ptc_top`                   |
+| GPIO                       | `0x80001400`   | 64 B  | `gpio_top`                  |
+| **Input controller**       | `0x80001500`   | 64 B  | `wb_input_controller`       |
+| UART                       | `0x80002000`   | 4 KiB | `uart_top`                  |
+| **VGA**                    | `0x80003000`   | 4 KiB | `wb_vga`                    |
+| **Audio**                  | `0x80004000`   | 4 KiB | `wb_audio`                  |
+| **USB/PS-2**               | `0x80008000`   | 4 KiB | reserved                    |
 
 Bold rows are subsystems built or extended for Note Feller. Each custom slave
 implements the same minimal Wishbone handshake: a registered one-cycle
@@ -95,11 +95,11 @@ quantization noise out of the audible band.
 
 ### 3.2 Register map (`wb_audio`, base `0x80004000`)
 
-| Offset | Name           | Field encoding                                              |
-|--------|----------------|-------------------------------------------------------------|
+| Offset   | Name             | Field encoding                                                         |
+| -------- | ---------------- | ---------------------------------------------------------------------- |
 | `0x00` | `AUDIO_CTRL`   | `[0]` amp enable (drives `aud_sd`); `[7:4]` reserved master gain |
-| `0x04` | `AUDIO_VOICES` | `[7:0]` per-voice on/off mask — bit *i* = voice *i* sounding |
-| `0x08` | `AUDIO_VOL`    | Eight packed 4-bit volumes: voice *i* in bits `[i*4 +: 4]`   |
+| `0x04` | `AUDIO_VOICES` | `[7:0]` per-voice on/off mask — bit *i* = voice *i* sounding    |
+| `0x08` | `AUDIO_VOL`    | Eight packed 4-bit volumes: voice*i* in bits `[i*4 +: 4]`          |
 
 The `AUDIO_VOL` packing places C4 in `[3:0]`, D4 in `[7:4]`, … C5 in
 `[31:28]`, giving independent per-note balance within a chord.
@@ -107,14 +107,14 @@ The `AUDIO_VOL` packing places C4 in `[3:0]`, D4 in `[7:4]`, … C5 in
 ### 3.3 Worked example: note frequency → phase increment
 
 The output frequency of a phase accumulator of width *N* clocked at
-*f*<sub>clk</sub> with increment *P* is:
+*f*`<sub>`clk`</sub>` with increment *P* is:
 
-> *f*<sub>out</sub> = *P* · *f*<sub>clk</sub> / 2<sup>*N*</sup>
+> *f*`<sub>`out`</sub>` = *P* · *f*`<sub>`clk`</sub>` / 2`<sup>`*N*`</sup>`
 
 Solving for the increment stored in the LUT (here *N* = 24,
-*f*<sub>clk</sub> = 25 MHz):
+*f*`<sub>`clk`</sub>` = 25 MHz):
 
-> *P* = round( *f*<sub>note</sub> · 2<sup>24</sup> / 25 000 000 )
+> *P* = round( *f*`<sub>`note`</sub>` · 2`<sup>`24`</sup>` / 25 000 000 )
 
 **Example — A4 = 440 Hz:**
 
@@ -123,16 +123,16 @@ Solving for the increment stored in the LUT (here *N* = 24,
 Reconstructing the realized pitch: 295 · 25 MHz / 2²⁴ = **439.6 Hz**, within
 0.1 % of concert A. The full table the hardware ships with:
 
-| Voice | Note | Freq (Hz) | Computed *P* | LUT value |
-|-------|------|-----------|--------------|-----------|
-| 0 | C4 | 261.63 | 175.6 | `0x0000B0` |
-| 1 | D4 | 293.66 | 197.1 | `0x0000C5` |
-| 2 | E4 | 329.63 | 221.2 | `0x0000DD` |
-| 3 | F4 | 349.23 | 234.4 | `0x0000EA` |
-| 4 | G4 | 392.00 | 263.1 | `0x000107` |
-| 5 | A4 | 440.00 | 295.3 | `0x000127` |
-| 6 | B4 | 493.88 | 331.5 | `0x00014C` |
-| 7 | C5 | 523.25 | 351.2 | `0x00015F` |
+| Voice | Note | Freq (Hz) | Computed*P*   | LUT value    |
+| ----- | ---- | --------- | ------------- | ------------ |
+| 0     | C4   | 261.63    | 175.6         | `0x0000B0`   |
+| 1     | D4   | 293.66    | 197.1         | `0x0000C5`   |
+| 2     | E4   | 329.63    | 221.2         | `0x0000DD`   |
+| 3     | F4   | 349.23    | 234.4         | `0x0000EA`   |
+| 4     | G4   | 392.00    | 263.1         | `0x000107`   |
+| 5     | A4   | 440.00    | 295.3         | `0x000127`   |
+| 6     | B4   | 493.88    | 331.5         | `0x00014C`   |
+| 7     | C5   | 523.25    | 351.2         | `0x00015F`   |
 
 ### 3.4 `audio.c` / `audio.h` driver
 
@@ -155,14 +155,14 @@ register access share one domain.
 
 ### 4.2 Sprite engine and scan-line prefetch FSM
 
-Rather than a full frame buffer, `wb_vga` implements a **64-sprite scan-line
-engine**. The CPU programs up to 64 sprite descriptors (type, color, position,
-ROM id) ahead of time; the hardware composites them live during scan-out.
+The design supports up to 64 sprites concurrently on the vga display.
+The CPU programs sprite registers with relevant information (type, color, position,
+ROM id) ahead of time. Then the hardware composites them live during scan-out.
 
-During each row's horizontal blanking interval, a prefetch FSM
-time-multiplexes the single-port sprite ROM to load the 1-bpp row bitmap for
-the *next* scan line of every sprite that overlaps it. With one-cycle BRAM read
-latency the fetch uses ~65 of the ~160 available blanking cycles. A
+While sprite information is stored in a sprite register, while the sprite bit-maps are stored in a ROM.
+During each row's horizontal blanking interval the sprite maps are read out in advance for
+the *next* scan line of every sprite that overlaps it. The BRAM read
+latency is one sycle so the fetch uses 65 of the ~160 available blanking cycles. A
 two-layer combinational compositor then paints each visible pixel: the
 background-color register forms the bottom layer, and sprites are applied in
 priority order (sprite 0 wins). A `0` bitmap bit is transparent; `1` bits paint
@@ -188,12 +188,12 @@ onto the VGA screen.
 
 ### 4.4 Register map (`wb_vga`, base `0x80003000`)
 
-| Offset           | Name            | Field encoding                                              |
-|------------------|-----------------|-------------------------------------------------------------|
-| `0x000`          | `REG_MODE`      | `[0]` display mode (0 = graphics)                           |
-| `0x014`          | `REG_BG_COLOR`  | `[11:0]` background `{R[11:8],G[7:4],B[3:0]}`               |
-| `0x080 + n·8`    | `SPRITE_POS[n]` | `[9:0]` x position; `[19:10]` y position                    |
-| `0x084 + n·8`    | `SPRITE_CFG[n]` | `[31:25]` sprite id; `[15:4]` color RGB444; `[1]` type (0=32×32, 1=16×16); `[0]` visible |
+| Offset           | Name              | Field encoding                                                                                     |
+| ---------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
+| `0x000`          | `REG_MODE`        | `[0]` display mode (0 = graphics)                                                                  |
+| `0x014`          | `REG_BG_COLOR`    | `[11:0]` background `{R[11:8],G[7:4],B[3:0]}`                                                      |
+| `0x080 + n·8`    | `SPRITE_POS[n]`   | `[9:0]` x position; `[19:10]` y position                                                           |
+| `0x084 + n·8`    | `SPRITE_CFG[n]`   | `[31:25]` sprite id; `[15:4]` color RGB444; `[1]` type (0=32×32, 1=16×16); `[0]` visible           |
 
 ### 4.5 `vga_sprite.c` / `vga_sprite.h` driver
 
@@ -237,12 +237,12 @@ This translation layer allows the game software to remain completely agnostic to
 
 ### 5.3 Register Map (`wb_input_controller`, base `0x80001500`)
 
-| Offset | Name           | Field Encoding                                            |
-| ------ | -------------- | --------------------------------------------------------- |
-| `0x00` | `INPUT_STATUS` | `[4:0]` current held inputs (lanes 0–3 + Enter)           |
-| `0x04` | `INPUT_EDGE`   | `[4:0]` latched rising-edge events; write 1s to clear     |
-| `0x08` | `INPUT_CTRL`   | `[0]` clear all edge-event bits                           |
-| `0x0C` | `INPUT_MODE`   | `[0]` input source select (`0 = buttons`, `1 = keyboard`) |
+| Offset   | Name             | Field Encoding                                                  |
+| -------- | ---------------- | --------------------------------------------------------------- |
+| `0x00`   | `INPUT_STATUS`   | `[4:0]` current held inputs (lanes 0–3 + Enter)                 |
+| `0x04`   | `INPUT_EDGE`     | `[4:0]` latched rising-edge events; write 1s to clear           |
+| `0x08`   | `INPUT_CTRL`     | `[0]` clear all edge-event bits                                 |
+| `0x0C`   | `INPUT_MODE`     | `[0]` input source select (`0 = buttons`, `1 = keyboard`)       |
 
 The separation between `INPUT_STATUS` and `INPUT_EDGE` allows software to distinguish between keys that are currently held and keys that were newly pressed since the last poll. This design simplifies gameplay logic while reducing the risk of missed timing events.
 
@@ -264,10 +264,10 @@ eight-digit seven-segment display, driven through the System Controller. The
 The module is still updated in parallel with the VGA score for redundancy, but
 the VGA bigfont text (Section 4.3) is now the primary readout.
 
-| Offset       | Name              | Encoding                                  |
-|--------------|-------------------|-------------------------------------------|
-| `0x80001038` | `SEVENSEG_ENABLES`| Per-digit enable (bit = 1 disables digit) |
-| `0x8000103C` | `SEVENSEG_DIGITS` | Eight 4-bit hex nibbles, one per digit    |
+| Offset         | Name                 | Encoding                                  |
+| -------------- | -------------------- | ----------------------------------------- |
+| `0x80001038`   | `SEVENSEG_ENABLES`   | Per-digit enable (bit = 1 disables digit) |
+| `0x8000103C`   | `SEVENSEG_DIGITS`    | Eight 4-bit hex nibbles, one per digit    |
 
 # 7. Game Engine (`NoteFeller-App`)
 
@@ -277,16 +277,16 @@ The Note Feller application is implemented as a collection of modular software c
 
 The game engine is organized into several cooperating modules:
 
-| Module               | Responsibility                                    |
-| -------------------- | ------------------------------------------------- |
-| `main.c`             | High-level game loop and state machine            |
-| `input_controller.c` | Hardware input abstraction                        |
-| `note.c`             | Note spawning, movement, and hit detection        |
-| `key.c`              | Lane target graphics and lane-state visualization |
-| `score.c`            | Score, combo, and multiplier management           |
-| `audio.c`            | Audio peripheral control                          |
-| `menu.c`             | Start screen, HUD, and game-over display          |
-| `vga_sprite.c`       | Low-level sprite interface                        |
+| Module                 | Responsibility                                    |
+| ---------------------- | ------------------------------------------------- |
+| `main.c`               | High-level game loop and state machine            |
+| `input_controller.c`   | Hardware input abstraction                        |
+| `note.c`               | Note spawning, movement, and hit detection        |
+| `key.c`                | Lane target graphics and lane-state visualization |
+| `score.c`              | Score, combo, and multiplier management           |
+| `audio.c`              | Audio peripheral control                          |
+| `menu.c`               | Start screen, HUD, and game-over display          |
+| `vga_sprite.c`         | Low-level sprite interface                        |
 
 This separation allows gameplay features to be modified without requiring changes to the underlying hardware peripherals.
 
@@ -294,11 +294,11 @@ This separation allows gameplay features to be modified without requiring change
 
 The game operates as a finite-state machine with three primary states:
 
-| State     | Purpose                                        |
-| --------- | ---------------------------------------------- |
-| `START`   | Display title screen and wait for player input |
-| `PLAYING` | Execute gameplay logic and update active notes |
-| `END`     | Display final score and wait for restart       |
+| State       | Purpose                                        |
+| ----------- | ---------------------------------------------- |
+| `START`     | Display title screen and wait for player input |
+| `PLAYING`   | Execute gameplay logic and update active notes |
+| `END`       | Display final score and wait for restart       |
 
 The main loop repeatedly executes the update routine associated with the current state. State transitions occur only in response to player input or game-completion conditions.
 
@@ -389,20 +389,20 @@ This static allocation strategy simplifies sprite management and avoids runtime 
 
 # 8. Key Design Decisions
 
-| Decision | Reason |
-|----------|--------|
-| 64-sprite scan-line engine instead of a frame buffer | A 12-bpp 640×480 frame buffer exceeded available BRAM; the DDR2 + DMA path could not be finished in time. |
-| Direct digital synthesis (phase accumulators) for tones | One adder per voice generates any pitch from a small LUT; trivially scales to polyphony. |
-| Delta-sigma 1-bit DAC on `aud_pwm` | The board provides only a 1-bit PWM audio pin; noise-shaping yields acceptable tone quality. |
-| Sum-and-bias voice mixing | Lets eight independent voices share the single PWM output as a chord. |
-| Hardware edge detection + latched event register | Cleanly distinguishes a new press from a held key and decouples input timing from CPU poll rate. |
-| Selectable pushbutton / keyboard input source | Either device can drive the same five gameplay signals, easing development and enabling the keyboard stretch goal. |
-| Reuse the 64 B `gpio2` slot for input | Minimal interconnect change for a register set that needs little space. |
-| 4 KiB pages for audio/VGA/USB | Headroom for register-map growth (e.g., the 512 B sprite table) and future features. |
-| Unified font + sprite ROM | One ROM serves both game art and text, allowing score/menus to render on VGA. |
-| Per-lane hit-flag lock state | Prevents a held key from double-scoring; one press = one scoring event. |
-| Sustain countdown for note-off | Decouples audio duration from key-hold time for more realistic sound. |
-| `__TIME__`-seeded `srand` | Varies spawn patterns without depending on a cycle-counter CSR. |
+| Decision                                                | Reason                                                                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 64-sprite scan-line engine instead of a frame buffer    | A 12-bpp 640×480 frame buffer exceeded available BRAM; the DDR2 + DMA path could not be finished in time.         |
+| Direct digital synthesis (phase accumulators) for tones | One adder per voice generates any pitch from a small LUT; trivially scales to polyphony.                           |
+| Delta-sigma 1-bit DAC on `aud_pwm`                    | The board provides only a 1-bit PWM audio pin; noise-shaping yields acceptable tone quality.                       |
+| Sum-and-bias voice mixing                               | Lets eight independent voices share the single PWM output as a chord.                                              |
+| Hardware edge detection + latched event register        | Cleanly distinguishes a new press from a held key and decouples input timing from CPU poll rate.                   |
+| Selectable pushbutton / keyboard input source           | Either device can drive the same five gameplay signals, easing development and enabling the keyboard stretch goal. |
+| Reuse the 64 B `gpio2` slot for input                 | Minimal interconnect change for a register set that needs little space.                                            |
+| 4 KiB pages for audio/VGA/USB                           | Headroom for register-map growth (e.g., the 512 B sprite table) and future features.                               |
+| Unified font + sprite ROM                               | One ROM serves both game art and text, allowing score/menus to render on VGA.                                      |
+| Per-lane hit-flag lock state                            | Prevents a held key from double-scoring; one press = one scoring event.                                            |
+| Sustain countdown for note-off                          | Decouples audio duration from key-hold time for more realistic sound.                                              |
+| `__TIME__`-seeded `srand`                           | Varies spawn patterns without depending on a cycle-counter CSR.                                                    |
 
 # 9. Summary
 
@@ -421,6 +421,6 @@ a responsive, musical game within the platform's BRAM and I/O constraints.
 
 # 10. LLM Acknowledgement
 
-Portions of the software and documentation were developed with the assistance of large language models. Generated content was used primarily to accelerate development, produce initial code structures, generate documentation drafts, and assist with debugging.
+Portions of the software, hardware, and  documentation were developed with the assistance of large language models. Generated content was used primarily to accelerate development, produce initial code structures, generate documentation drafts, and assist with debugging.
 
 All generated code and documentation were reviewed, tested, and modified by the project authors prior to inclusion in the final system. The authors assume full responsibility for the correctness, functionality, and design decisions associated with the completed project.
