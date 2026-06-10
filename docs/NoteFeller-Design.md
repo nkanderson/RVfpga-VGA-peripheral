@@ -3,13 +3,26 @@ Build to LaTeX/PDF with:
   pandoc docs/NoteFeller-Design.md -o NoteFeller-Design.pdf \
     -V geometry:margin=1in -V fontsize=11pt --toc \
     --pdf-engine=xelatex \
-    --template=notex-template.latex
+    --template=notex-template.latex \
+    -V classoption=titlepage
 
 Where notex-template.latex is the default pandoc LaTeX template with
 the `\usepackage{lmodern}` line removed (lmodern is not installed).
 Generate it once with:
   pandoc -D latex | sed 's/\\usepackage{lmodern}/% lmodern removed/' > notex-template.latex
 -->
+---
+title: |
+  Note Feller
+  \
+  Design and Implementation
+author: |
+  Jacob Burtenshaw\
+  Chris Kane-Pardy\
+  Niklas Anderson\
+  Sajida Sayyad
+date: \today
+---
 
 # 1. Overview
 
