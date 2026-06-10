@@ -1,12 +1,17 @@
 <!--
 Build to LaTeX/PDF with:
   pandoc docs/NoteFeller-Design.md -o NoteFeller-Design.pdf \
-    -V geometry:margin=1in -V fontsize=11pt --toc
+    -V geometry:margin=1in -V fontsize=11pt --toc \
+    --pdf-engine=xelatex \
+    --template=notex-template.latex
+
+Where notex-template.latex is the default pandoc LaTeX template with
+the `\usepackage{lmodern}` line removed (lmodern is not installed).
+Generate it once with:
+  pandoc -D latex | sed 's/\\usepackage{lmodern}/% lmodern removed/' > notex-template.latex
 -->
 
-# Note Feller — Design and Implementation
-
-## 1. Overview
+# 1. Overview
 
 Note Feller is a rhythm-based music game implemented as a System-on-Chip
 (SoC) design on the Digilent Nexys A7 (Xilinx Artix-7) FPGA platform. The
@@ -24,14 +29,14 @@ The project follows a hardware/software co-design split:
   (`NoteFeller-App/`) owns all gameplay logic: note sequencing, movement,
   hit detection, scoring, audio cues, and menu/state control.
 
-Development proceeded incrementally, validating each subsystem independently
+We proceeded with development incrementally, validating each subsystem independently
 (VGA and input first, then audio and gameplay integration) before full system
 bring-up. The codebase started from the Project 2 VGA peripheral and was
 extended with new audio, input, and USB address space.
 
-## 2. System Architecture
+# 2. System Architecture
 
-### 2.1 Wishbone interconnect and address space
+## 2.1 Wishbone interconnect and address space
 
 The peripherals attach to the existing VeeRwolf Wishbone I/O bus. Adding the
 new hardware required extending `wb_intercon.v` / `wb_intercon.vh` with slave
@@ -44,7 +49,7 @@ Sizing rationale: the input-controller bank reuses the compact 64-byte
 generous per-page allocation leaves room for register-map growth — the VGA
 sprite table alone consumes 64 sprites × 2 words = 512 bytes.
 
-### 2.2 Memory map
+## 2.2 Memory map
 
 All peripherals live in the I/O region based at `0x80000000`.
 
@@ -67,9 +72,9 @@ implements the same minimal Wishbone handshake: a registered one-cycle
 `wb_ack_o` asserted when `wb_cyc_i & wb_stb_i` is seen, with `wb_err_o` and
 `wb_rty_o` tied low.
 
-## 3. Audio Subsystem
+# 3. Audio Subsystem
 
-### 3.1 `wb_audio` — direct digital synthesis with delta-sigma output
+## 3.1 `wb_audio` — direct digital synthesis with delta-sigma output
 
 The Nexys A7 exposes only a single-bit PWM audio pin (`aud_pwm`) plus a
 shutdown/mute pin (`aud_sd`). The audio peripheral therefore synthesizes tones
@@ -93,7 +98,7 @@ The carry/MSB of that accumulator drives `aud_pwm` directly, so the time-
 average of the PWM stream reconstructs the mixed analog waveform while pushing
 quantization noise out of the audible band.
 
-### 3.2 Register map (`wb_audio`, base `0x80004000`)
+## 3.2 Register map (`wb_audio`, base `0x80004000`)
 
 | Offset   | Name             | Field encoding                                                         |
 | -------- | ---------------- | ---------------------------------------------------------------------- |
@@ -104,23 +109,23 @@ quantization noise out of the audible band.
 The `AUDIO_VOL` packing places C4 in `[3:0]`, D4 in `[7:4]`, … C5 in
 `[31:28]`, giving independent per-note balance within a chord.
 
-### 3.3 Worked example: note frequency → phase increment
+## 3.3 Worked example: note frequency → phase increment
 
 The output frequency of a phase accumulator of width *N* clocked at
-*f*`<sub>`clk`</sub>` with increment *P* is:
+*f*~clk~ with increment *P* is:
 
-> *f*`<sub>`out`</sub>` = *P* · *f*`<sub>`clk`</sub>` / 2`<sup>`*N*`</sup>`
+> *f*~out~ = *P* · *f*~clk~ / 2^*N*^
 
 Solving for the increment stored in the LUT (here *N* = 24,
-*f*`<sub>`clk`</sub>` = 25 MHz):
+*f*~clk~ = 25 MHz):
 
-> *P* = round( *f*`<sub>`note`</sub>` · 2`<sup>`24`</sup>` / 25 000 000 )
+> *P* = round( *f*~note~ · 2^24^ / 25 000 000 )
 
 **Example — A4 = 440 Hz:**
 
 > *P* = round(440 · 16 777 216 / 25 000 000) = round(295.28) = **295 = `0x127`**
 
-Reconstructing the realized pitch: 295 · 25 MHz / 2²⁴ = **439.6 Hz**, within
+Reconstructing the realized pitch: 295 · 25 MHz / 2^24^ = **439.6 Hz**, within
 0.1 % of concert A. The full table the hardware ships with:
 
 | Voice | Note | Freq (Hz) | Computed*P*   | LUT value    |
@@ -134,7 +139,7 @@ Reconstructing the realized pitch: 295 · 25 MHz / 2²⁴ = **439.6 Hz**, within
 | 6     | B4   | 493.88    | 331.5         | `0x00014C`   |
 | 7     | C5   | 523.25    | 351.2         | `0x00015F`   |
 
-### 3.4 `audio.c` / `audio.h` driver
+## 3.4 `audio.c` / `audio.h` driver
 
 The software driver hides register packing behind a small voice-oriented API:
 `audio_init()` silences all voices, loads a uniform default volume, and enables
@@ -144,16 +149,16 @@ notes; `audio_set_voice_volume()` performs a read-modify-write of the packed
 (`AUDIO_VOICE_C4 … AUDIO_VOICE_C5`), so the game can play a lane's note with a
 single call.
 
-## 4. Video Subsystem (VGA)
+# 4. Video Subsystem (VGA)
 
-### 4.1 Display timing
+## 4.1 Display timing
 
 A display-timing generator (`dtg.sv`) produces 640×480 @ 60 Hz sync signals
 from a 25 MHz pixel clock, emitting `pixel_row`, `pixel_column`, and
 `video_on`. The Wishbone clock doubles as the pixel clock, so VGA timing and
 register access share one domain.
 
-### 4.2 Sprite engine and scan-line prefetch FSM
+## 4.2 Sprite engine and scan-line prefetch FSM
 
 The design supports up to 64 sprites concurrently on the vga display.
 The CPU programs sprite registers with relevant information (type, color, position,
@@ -186,7 +191,7 @@ sprites (chord circles, note circles, squiggles, borders). The ROM address is
 one ROM is what let the score and menus move off the seven-segment display and
 onto the VGA screen.
 
-### 4.4 Register map (`wb_vga`, base `0x80003000`)
+## 4.4 Register map (`wb_vga`, base `0x80003000`)
 
 | Offset           | Name              | Field encoding                                                                                     |
 | ---------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
@@ -195,7 +200,7 @@ onto the VGA screen.
 | `0x080 + n·8`    | `SPRITE_POS[n]`   | `[9:0]` x position; `[19:10]` y position                                                           |
 | `0x084 + n·8`    | `SPRITE_CFG[n]`   | `[31:25]` sprite id; `[15:4]` color RGB444; `[1]` type (0=32×32, 1=16×16); `[0]` visible           |
 
-### 4.5 `vga_sprite.c` / `vga_sprite.h` driver
+## 4.5 `vga_sprite.c` / `vga_sprite.h` driver
 
 The driver presents a `Sprite` descriptor struct (slot, id, type, color, x, y)
 and packs it into the two hardware words. Helpers include `VGA_COLOR(r,g,b)`
@@ -203,9 +208,9 @@ for 12-bit colors, named `SPRITE_FORM_*` constants for every ROM entry,
 `vga_set_sprite()`, `vga_clear_sprite()`, and `vga_set_bg_color()`. Higher-level
 game modules (keys, notes, menu, score) build entirely on this API.
 
-## 5. Input / I-O Subsystem
+# 5. Input / I-O Subsystem
 
-### 5.1 `wb_input_controller`
+## 5.1 `wb_input_controller`
 
 The input controller converts asynchronous user inputs into a CPU-friendly, memory-mapped interface for gameplay. Rather than exposing raw button or keyboard signals directly to software, the peripheral presents both the current input state and a set of latched press events through Wishbone registers.
 
@@ -215,7 +220,7 @@ This distinction between **held state** and **new-press events** is critical for
 
 The peripheral also supports multiple input sources through a selectable input mode register. During development, gameplay could be controlled either by the Nexys A7 pushbuttons or by a keyboard interface while presenting the same five-bit gameplay abstraction to software. Regardless of the physical source, the controller outputs a common set of lane signals corresponding to the four gameplay lanes and the Enter/start button.
 
-### 5.2 Keyboard Input Processing
+## 5.2 Keyboard Input Processing
 
 Keyboard input is represented internally using the same five-bit gameplay interface as the pushbuttons. The controller receives decoded keyboard scan-code events and translates them into lane states corresponding to the A, S, D, F, and Enter keys.
 
@@ -235,7 +240,7 @@ Current key mappings are:
 
 This translation layer allows the game software to remain completely agnostic to the underlying input device.
 
-### 5.3 Register Map (`wb_input_controller`, base `0x80001500`)
+## 5.3 Register Map (`wb_input_controller`, base `0x80001500`)
 
 | Offset   | Name             | Field Encoding                                                  |
 | -------- | ---------------- | --------------------------------------------------------------- |
@@ -246,7 +251,7 @@ This translation layer allows the game software to remain completely agnostic to
 
 The separation between `INPUT_STATUS` and `INPUT_EDGE` allows software to distinguish between keys that are currently held and keys that were newly pressed since the last poll. This design simplifies gameplay logic while reducing the risk of missed timing events.
 
-### 5.4 `input_controller.c` / `input_controller.h` Driver
+## 5.4 `input_controller.c` / `input_controller.h` Driver
 
 The software driver provides a small abstraction layer over the hardware register interface. Functions such as `input_get_status()` and `input_get_edges()` expose the current held-input state and latched press events without requiring the game engine to interact with raw memory-mapped addresses.
 
@@ -254,7 +259,7 @@ The most commonly used interface is `input_poll_new_presses()`, which reads the 
 
 Additional helper functions allow software to clear selected edge bits, clear all pending events, and select the active input source. Because both pushbutton and keyboard inputs are reduced to the same five-bit gameplay representation in hardware, the remainder of the game engine can operate independently of the physical input device.
 
-## 6. Seven-Segment Display (legacy score output)
+# 6. Seven-Segment Display (legacy score output)
 
 Before the score was rendered on the VGA screen, it was shown on the board's
 eight-digit seven-segment display, driven through the System Controller. The
