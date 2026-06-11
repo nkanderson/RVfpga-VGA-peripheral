@@ -10,6 +10,11 @@
 // Controls:
 //   W/A/S/D  -> gameplay lanes
 //   Enter    -> start game / end game / return to start
+//
+// LLM Acknowledgment: Parts of this code were generated with the assistance 
+// of a large language model, which provided the initial structure and logic.
+// The final implementation was reviewed and edited by the author to ensure
+// correctness and functionality on the target hardware platform.
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdint.h>

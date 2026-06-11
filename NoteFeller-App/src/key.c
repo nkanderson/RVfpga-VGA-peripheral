@@ -7,6 +7,11 @@
 // Description:
 //   Lane/key management for the four gameplay lanes.
 //   Enter / INPUT_LANE_4 is reserved for menu/start control, not gameplay.
+//
+// LLM Acknowledgment: Parts of this code were generated with the assistance 
+// of a large language model, which provided the initial structure and logic.
+// The final implementation was reviewed and edited by the author to ensure
+// correctness and functionality on the target hardware platform.
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "key.h"

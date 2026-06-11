@@ -16,6 +16,11 @@
 //   - Increment score on successful hits
 //   - Reset combo on misses
 //   - Update seven-segment score display
+//
+// LLM Acknowledgment: Parts of this code were generated with the assistance 
+// of a large language model, which provided the initial structure and logic.
+// The final implementation was reviewed and edited by the author to ensure
+// correctness and functionality on the target hardware platform.
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "score.h"

@@ -7,7 +7,13 @@
 // Description:
 //   Handles note spawning, fixed-speed note movement, hit detection,
 //   and missed-note reporting.
+//
+// LLM Acknowledgment: Parts of this code were generated with the assistance 
+// of a large language model, which provided the initial structure and logic.
+// The final implementation was reviewed and edited by the author to ensure
+// correctness and functionality on the target hardware platform.
 ////////////////////////////////////////////////////////////////////////////////
+
 
 #include <stdlib.h>
 #include "note.h"
